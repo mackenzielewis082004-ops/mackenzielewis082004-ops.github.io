@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Groundhog Prediction Finder</title>
+  <meta name="description" content="Search every Groundhog Day prognosticator by name, state or province and type of creature, and see each one's prediction record since 1990.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --surface: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #c8102e;
+      --winter: #2f6fb3;      /* saw shadow: six more weeks of winter */
+      --spring: #3f9b4f;      /* no shadow: early spring */
+      --unknown: #d1d5db;
+      --chip: #f3f4f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #121416;
+        --surface: #1b1e21;
+        --text: #eef0f2;
+        --muted: #a1a7ae;
+        --line: #2e3338;
+        --accent: #ff5a6e;
+        --winter: #5b9be0;
+        --spring: #5fbf6f;
+        --unknown: #454b52;
+        --chip: #262a2e;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #121416; --surface: #1b1e21; --text: #eef0f2; --muted: #a1a7ae;
+      --line: #2e3338; --accent: #ff5a6e; --winter: #5b9be0; --spring: #5fbf6f;
+      --unknown: #454b52; --chip: #262a2e;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 40px; }
+
+    header { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; color: var(--accent); }
+    .dek { margin: 8px 0 0; color: var(--muted); max-width: 65ch; }
+
+    /* Filters */
+    .filters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 720px) { .filters { grid-template-columns: 1fr; } }
+    label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+    input[type="search"], select {
+      width: 100%;
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    input[type="search"]:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    .toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 16px; font-size: .9rem; color: var(--muted);
+    }
+    .toolbar .right { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .toolbar select { width: auto; padding: 6px 10px; border-width: 1px; font-size: .9rem; }
+    .toolbar label.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .9rem; }
+    button.reset {
+      font: inherit; font-size: .9rem; background: none; border: none; color: var(--accent);
+      cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px;
+    }
+
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-bottom: 18px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .sw.winter { background: var(--winter); }
+    .sw.spring { background: var(--spring); }
+    .sw.unknown { background: var(--unknown); }
+
+    /* Results */
+    #results { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    @media (max-width: 380px) { #results { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      min-width: 0;
+    }
+    .card-top { display: flex; gap: 12px; align-items: flex-start; }
+    .card-top img {
+      width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+      background: var(--chip);
+    }
+    .card h2 { margin: 0; font-size: 1.1rem; line-height: 1.25; }
+    .place { color: var(--muted); font-size: .9rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip { background: var(--chip); border-radius: 999px; padding: 2px 9px; font-size: .78rem; font-weight: 500; }
+    .chip.retired { color: var(--muted); }
+
+    .latest { font-size: .92rem; }
+    .latest strong.winter { color: var(--winter); }
+    .latest strong.spring { color: var(--spring); }
+
+    .record-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--unknown); }
+    .record-bar .winter { background: var(--winter); }
+    .record-bar .spring { background: var(--spring); }
+    .record-nums { display: flex; justify-content: space-between; font-size: .82rem; color: var(--muted); margin-top: 4px; gap: 8px; flex-wrap: wrap; }
+
+    .years { display: flex; flex-wrap: wrap; gap: 3px; }
+    .yr { width: 14px; height: 14px; border-radius: 3px; background: var(--unknown); }
+    .yr.winter { background: var(--winter); }
+    .yr.spring { background: var(--spring); }
+
+    details summary { cursor: pointer; font-size: .88rem; color: var(--accent); font-weight: 500; }
+    details p { font-size: .9rem; color: var(--muted); margin: 8px 0 0; }
+    .hist { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 8px; }
+    .hist td { padding: 4px 0; border-top: 1px solid var(--line); vertical-align: top; }
+    .hist td:first-child { width: 52px; font-weight: 600; }
+    .hist td:nth-child(2) { width: 110px; }
+
+    .status { text-align: center; color: var(--muted); padding: 48px 0; }
+    .more { display: block; margin: 20px auto 0; font: inherit; font-weight: 600; padding: 10px 20px; border-radius: 999px; border: 2px solid var(--accent); background: none; color: var(--accent); cursor: pointer; }
+    footer { margin-top: 28px; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Groundhog Day prediction finder</h1>
+      <p class="dek">Search every Groundhog Day prognosticator in North America — from Punxsutawney Phil to stuffed marmots and a largemouth bass — and see how often each one has called for six more weeks of winter or an early spring.</p>
+    </header>
+
+    <div class="filters" role="search">
+      <div>
+        <label for="q">Name or town</label>
+        <input type="search" id="q" placeholder="Try “Phil”, “Chuck” or “Wiarton”" autocomplete="off">
+      </div>
+      <div>
+        <label for="region">State or province</label>
+        <select id="region"><option value="">All states &amp; provinces</option></select>
+      </div>
+      <div>
+        <label for="type">Type of creature</label>
+        <select id="type"><option value="">All creatures</option></select>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div id="count" aria-live="polite">Loading predictions…</div>
+      <div class="right">
+        <label class="inline"><input type="checkbox" id="activeOnly"> Active only</label>
+        <label class="inline" for="sort">Sort
+          <select id="sort">
+            <option value="count">Most predictions</option>
+            <option value="name">Name (A–Z)</option>
+            <option value="winter">Most winter-leaning</option>
+            <option value="spring">Most spring-leaning</option>
+          </select>
+        </label>
+        <button class="reset" id="reset" type="button">Reset</button>
+      </div>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw winter"></i> Saw shadow (six more weeks of winter)</span>
+      <span><i class="sw spring"></i> No shadow (early spring)</span>
+      <span><i class="sw unknown"></i> No prediction recorded</span>
+    </div>
+
+    <div id="results"></div>
+    <div id="status" class="status" hidden></div>
+    <button id="more" class="more" type="button" hidden>Show more</button>
+
+    <footer>
+      Source: <a href="https://groundhog-day.com" target="_blank" rel="noopener">groundhog-day.com</a>, via
+      <a href="https://the-art-of-data-journalism.github.io/tutorial-data/groundhogs/predictions.csv" target="_blank" rel="noopener">The Art of Data Journalism</a>.
+      Records cover 1990–2026. The data records each prediction, not whether spring actually came early.
+    </footer>
+  </div>
+
+  <script>
+    const DATA_URL = 'https://the-art-of-data-journalism.github.io/tutorial-data/groundhogs/predictions.csv';
+    const PAGE_SIZE = 24;
+    const FIRST_YEAR = 1990, LAST_YEAR = 2026;
+
+    const els = {
+      q: document.getElementById('q'),
+      region: document.getElementById('region'),
+      type: document.getElementById('type'),
+      activeOnly: document.getElementById('activeOnly'),
+      sort: document.getElementById('sort'),
+      reset: document.getElementById('reset'),
+      count: document.getElementById('count'),
+      results: document.getElementById('results'),
+      status: document.getElementById('status'),
+      more: document.getElementById('more'),
+    };
+
+    let prognosticators = [];
+    let filtered = [];
+    let shown = 0;
+
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const norm = s => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const pct = (n, d) => d ? Math.round((n / d) * 100) : 0;
+
+    // Group prediction rows (one per year) into one record per prognosticator
+    function build(rows) {
+      const byId = new Map();
+      for (const r of rows) {
+        if (!r.id) continue;
+        let p = byId.get(r.id);
+        if (!p) {
+          p = {
+            id: r.id, name: r.name, slug: r.slug, city: r.city, region: r.region, country: r.country,
+            type: r.type, active: r.active === '1', image: r.image, description: r.description,
+            source: r.source, years: new Map(),
+          };
+          byId.set(r.id, p);
+        }
+        p.years.set(Number(r.year), { shadow: r.shadow, details: r.details });
+      }
+      for (const p of byId.values()) {
+        const ys = [...p.years.keys()].sort((a, b) => a - b);
+        p.first = ys[0];
+        p.last = ys[ys.length - 1];
+        p.winter = 0; p.spring = 0; p.none = 0;
+        for (const v of p.years.values()) {
+          if (v.shadow === '1') p.winter++;
+          else if (v.shadow === '0') p.spring++;
+          else p.none++;
+        }
+        p.total = p.winter + p.spring;
+        // most recent year with an actual call
+        const latestYear = ys.slice().reverse().find(y => ['0', '1'].includes(p.years.get(y).shadow));
+        p.latest = latestYear ? { year: latestYear, ...p.years.get(latestYear) } : null;
+        p.haystack = norm([p.name, p.city, p.region, p.country, p.slug].join(' '));
+      }
+      return [...byId.values()];
+    }
+
+    function fillSelect(sel, values) {
+      for (const v of values) {
+        const o = document.createElement('option');
+        o.value = v.value; o.textContent = v.label;
+        sel.appendChild(o);
+      }
+    }
+
+    function populateFilters() {
+      const regionCounts = new Map();
+      const typeCounts = new Map();
+      for (const p of prognosticators) {
+        const rk = `${p.region}|${p.country}`;
+        regionCounts.set(rk, (regionCounts.get(rk) || 0) + 1);
+        typeCounts.set(p.type, (typeCounts.get(p.type) || 0) + 1);
+      }
+      const regions = [...regionCounts.entries()]
+        .map(([k, n]) => { const [region, country] = k.split('|'); return { region, country, n }; })
+        .sort((a, b) => a.country.localeCompare(b.country) * -1 || a.region.localeCompare(b.region)); // USA first
+      for (const country of ['USA', 'Canada']) {
+        const group = document.createElement('optgroup');
+        group.label = country === 'USA' ? 'United States' : 'Canada';
+        for (const r of regions.filter(r => r.country === country)) {
+          const o = document.createElement('option');
+          o.value = r.region; o.textContent = `${r.region} (${r.n})`;
+          group.appendChild(o);
+        }
+        els.region.appendChild(group);
+      }
+      fillSelect(els.type, [...typeCounts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([t, n]) => ({ value: t, label: `${t} (${n})` })));
+    }
+
+    function apply() {
+      const q = norm(els.q.value.trim());
+      const terms = q ? q.split(/\s+/) : [];
+      const region = els.region.value;
+      const type = els.type.value;
+      const activeOnly = els.activeOnly.checked;
+
+      filtered = prognosticators.filter(p =>
+        (!region || p.region === region) &&
+        (!type || p.type === type) &&
+        (!activeOnly || p.active) &&
+        terms.every(t => p.haystack.includes(t))
+      );
+
+      const sorters = {
+        count: (a, b) => b.total - a.total || a.name.localeCompare(b.name),
+        name: (a, b) => a.name.localeCompare(b.name),
+        winter: (a, b) => (b.winter / (b.total || 1)) - (a.winter / (a.total || 1)) || b.total - a.total,
+        spring: (a, b) => (b.spring / (b.total || 1)) - (a.spring / (a.total || 1)) || b.total - a.total,
+      };
+      filtered.sort(sorters[els.sort.value]);
+
+      const n = filtered.length;
+      els.count.textContent = n === prognosticators.length
+        ? `Showing all ${n} prognosticators`
+        : `${n} of ${prognosticators.length} prognosticators match`;
+
+      els.results.innerHTML = '';
+      shown = 0;
+      if (!n) {
+        els.status.hidden = false;
+        els.status.innerHTML = '<strong>No prognosticators found.</strong><br>Try a different name or clear a filter.';
+      } else {
+        els.status.hidden = true;
+      }
+      renderMore();
+      writeHash();
+    }
+
+    function renderMore() {
+      const next = filtered.slice(shown, shown + PAGE_SIZE);
+      els.results.insertAdjacentHTML('beforeend', next.map(card).join(''));
+      shown += next.length;
+      els.more.hidden = shown >= filtered.length;
+      els.more.textContent = `Show more (${filtered.length - shown} left)`;
+      postHeight();
+    }
+
+    function card(p) {
+      const w = pct(p.winter, p.total), s = pct(p.spring, p.total);
+      const lean = p.total === 0 ? 'No recorded calls yet'
+        : w > s ? `Leans winter: ${w}% of calls` : s > w ? `Leans spring: ${s}% of calls` : 'Evenly split';
+      const latest = p.latest
+        ? `${p.latest.year}: <strong class="${p.latest.shadow === '1' ? 'winter' : 'spring'}">${p.latest.shadow === '1' ? 'Saw shadow — more winter' : 'No shadow — early spring'}</strong>`
+        : 'No prediction on record';
+
+      let strip = '';
+      for (let y = p.first; y <= LAST_YEAR; y++) {
+        const v = p.years.get(y);
+        const cls = !v ? 'unknown' : v.shadow === '1' ? 'winter' : v.shadow === '0' ? 'spring' : 'unknown';
+        const label = !v ? 'no record' : v.shadow === '1' ? 'saw shadow' : v.shadow === '0' ? 'no shadow' : 'no prediction';
+        strip += `<i class="yr ${cls}" title="${y}: ${label}"></i>`;
+      }
+
+      const histRows = [...p.years.entries()].sort((a, b) => b[0] - a[0]).map(([y, v]) => {
+        const call = v.shadow === '1' ? 'Shadow' : v.shadow === '0' ? 'No shadow' : 'No prediction';
+        return `<tr><td>${y}</td><td>${call}</td><td>${esc(v.details)}</td></tr>`;
+      }).join('');
+
+      return `
+        <article class="card">
+          <div class="card-top">
+            <img src="${esc(p.image)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+            <div>
+              <h2>${esc(p.name)}</h2>
+              <div class="place">${esc(p.city)}, ${esc(p.region)}${p.country === 'Canada' ? ', Canada' : ''}</div>
+              <div class="chips">
+                <span class="chip">${esc(p.type)}</span>
+                ${p.active ? '' : '<span class="chip retired">Retired</span>'}
+              </div>
+            </div>
+          </div>
+          <div class="latest">Latest call — ${latest}</div>
+          <div>
+            <div class="record-bar" role="img" aria-label="${p.winter} shadow calls, ${p.spring} no-shadow calls">
+              <span class="winter" style="width:${pct(p.winter, p.winter + p.spring + p.none)}%"></span>
+              <span class="spring" style="width:${pct(p.spring, p.winter + p.spring + p.none)}%"></span>
+            </div>
+            <div class="record-nums">
+              <span><strong>${p.winter}</strong> winter · <strong>${p.spring}</strong> spring${p.none ? ` · ${p.none} none` : ''}</span>
+              <span>${lean}</span>
+            </div>
+          </div>
+          <div>
+            <div class="years" aria-hidden="true">${strip}</div>
+            <div class="record-nums"><span>${p.first}</span><span>${LAST_YEAR}</span></div>
+          </div>
+          <details>
+            <summary>Year-by-year record</summary>
+            ${p.description ? `<p>${esc(p.description)}</p>` : ''}
+            <table class="hist"><tbody>${histRows}</tbody></table>
+          </details>
+        </article>`;
+    }
+
+    // Keep filters in the URL hash so a CMS page can deep-link (e.g. #type=Opossum)
+    function writeHash() {
+      const params = new URLSearchParams();
+      if (els.q.value.trim()) params.set('q', els.q.value.trim());
+      if (els.region.value) params.set('region', els.region.value);
+      if (els.type.value) params.set('type', els.type.value);
+      if (els.activeOnly.checked) params.set('active', '1');
+      if (els.sort.value !== 'count') params.set('sort', els.sort.value);
+      const h = params.toString();
+      history.replaceState(null, '', h ? '#' + h : location.pathname + location.search);
+    }
+    function readHash() {
+      const params = new URLSearchParams(location.hash.slice(1));
+      els.q.value = params.get('q') || '';
+      els.region.value = params.get('region') || '';
+      els.type.value = params.get('type') || '';
+      els.activeOnly.checked = params.get('active') === '1';
+      els.sort.value = params.get('sort') || 'count';
+    }
+
+    // Tell a parent page our height so the iframe can auto-resize
+    function postHeight() {
+      if (window.parent === window) return;
+      requestAnimationFrame(() => {
+        window.parent.postMessage({ type: 'groundhog-finder:height', height: document.documentElement.scrollHeight }, '*');
+      });
+    }
+    window.addEventListener('resize', postHeight);
+    document.addEventListener('toggle', postHeight, true);
+
+    let t;
+    els.q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(apply, 120); });
+    [els.region, els.type, els.activeOnly, els.sort].forEach(el => el.addEventListener('change', apply));
+    els.more.addEventListener('click', renderMore);
+    els.reset.addEventListener('click', () => {
+      els.q.value = ''; els.region.value = ''; els.type.value = ''; els.activeOnly.checked = false; els.sort.value = 'count';
+      apply();
+    });
+
+    Papa.parse(DATA_URL, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: res => {
+        prognosticators = build(res.data);
+        populateFilters();
+        readHash();
+        apply();
+      },
+      error: () => {
+        els.count.textContent = '';
+        els.status.hidden = false;
+        els.status.textContent = 'Sorry — the prediction data could not be loaded. Please refresh to try again.';
+      },
+    });
+  </script>
+</body>
+</html>
