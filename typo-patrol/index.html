@@ -148,7 +148,7 @@
     <div class="hud">
       <div class="stat"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
       <div class="stat"><div class="lbl">Streak</div><div class="val" id="combo">×1</div></div>
-      <div class="stat"><div class="lbl">Corrections</div><div class="val lives" id="lives">✎✎✎</div></div>
+      <div class="stat"><div class="lbl">Corrections</div><div class="val lives" id="lives">✎✎✎✎✎</div></div>
       <div class="stat"><div class="lbl">Best</div><div class="val" id="best">0</div></div>
     </div>
 
@@ -171,7 +171,7 @@
 
       <div class="overlay hidden" id="overOverlay">
         <div class="rank" id="overRank"></div>
-        <h2>Three corrections. You're off the desk.</h2>
+        <h2>Five corrections. You're off the desk.</h2>
         <p id="overMsg"></p>
         <button class="btn" id="againBtn">Work another shift</button>
         <div class="report" id="report"></div>
@@ -191,9 +191,9 @@
         <li>Real Daily Nebraskan headlines slide down the copy desk toward the press.</li>
         <li>Some of them have a <strong>typo</strong>: swapped letters, a missing letter, a doubled letter or the wrong vowel. Click or tap that word to fix it.</li>
         <li>Each fix is worth <strong>3 points × your streak</strong>. Every fix in a row raises your streak, up to ×5.</li>
-        <li>Clean headlines that reach the press earn <strong>1 point</strong>. Click a word that's spelled correctly and you lose 2 points and your streak.</li>
-        <li>If a typo gets printed, the paper has to run a <strong>correction</strong>. After three of those, your shift is over.</li>
-        <li>The press speeds up the longer you last.</li>
+        <li>Clean headlines that reach the press earn <strong>1 point</strong>. Click a word that's spelled correctly and you lose 1 point and your streak.</li>
+        <li>If a typo gets printed, the paper has to run a <strong>correction</strong>. You can run five corrections before your shift is over.</li>
+        <li>The press starts slow and speeds up a little the longer you last.</li>
       </ol>
     </div>
     <div class="box">
@@ -344,8 +344,8 @@
     galley.querySelectorAll('.card, .pop').forEach(el => el.remove());
     S = {
       running: false, paused: false, over: false,
-      score: 0, combo: 1, lives: 3,
-      speed: 26, elapsed: 0, last: 0,
+      score: 0, combo: 1, lives: 5,
+      speed: 20, elapsed: 0, last: 0,
       cards: [], deck: shuffle(STORIES.slice()),
       fixed: [], printed: [], clean: 0,
     };
@@ -355,7 +355,7 @@
   function hud() {
     $('score').textContent = S.score;
     $('combo').textContent = '×' + S.combo;
-    $('lives').textContent = '✎'.repeat(S.lives) + '·'.repeat(3 - S.lives);
+    $('lives').textContent = '✎'.repeat(S.lives) + '·'.repeat(5 - S.lives);
   }
 
   function nextStory() {
@@ -434,12 +434,12 @@
       S.combo = Math.min(5, S.combo + 1);
       retire(card);
     } else {
-      S.score = Math.max(0, S.score - 2);
+      S.score = Math.max(0, S.score - 1);
       S.combo = 1;
       sp.classList.add('miss');
       setTimeout(() => sp.classList.remove('miss'), 500);
       card.el.classList.remove('shake'); void card.el.offsetWidth; card.el.classList.add('shake');
-      popText('−2', 'var(--red)', e.clientX, e.clientY);
+      popText('−1', 'var(--red)', e.clientX, e.clientY);
     }
     hud();
   }
@@ -474,7 +474,7 @@
     S.last = now;
     if (!S.paused) {
       S.elapsed += dt;
-      S.speed = Math.min(95, 26 + S.elapsed * 0.75);
+      S.speed = Math.min(70, 20 + S.elapsed * 0.4);
       const floor = galley.clientHeight - PRESS_H;
       // spawn when the newest card has fully entered with a gap
       const newest = S.cards[S.cards.length - 1];
