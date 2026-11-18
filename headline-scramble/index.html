@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Headline Scramble</title>
+<meta name="description" content="Headline Scramble: put the words of real Daily Nebraskan headlines back in order. A Mostly Mindless Entertainment game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --soft: #f4f4f2;
+    --ink: #111111;
+    --muted: #5e5e5e;
+    --line: #dddddd;
+    --red: #c8102e;
+    --red-soft: #fbe9ec;
+    --green: #157a3a;
+    --green-soft: #e4f3e9;
+    --tile: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121212;
+      --soft: #1e1e1e;
+      --ink: #f1f1f1;
+      --muted: #a8a8a8;
+      --line: #333333;
+      --red: #ff4d63;
+      --red-soft: #3a1a20;
+      --green: #4fcf7f;
+      --green-soft: #173523;
+      --tile: #262626;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Libre Franklin', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+
+  /* DN-style chrome */
+  .topbar { background: #111; color: #fff; font-size: 12px; }
+  .topbar .in { max-width: 1100px; margin: 0 auto; padding: 0 16px; display: flex; justify-content: space-between; align-items: center; height: 32px; gap: 12px; }
+  .topbar span { opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar a { color: #fff; font-weight: 700; text-decoration: none; white-space: nowrap; }
+  .masthead { text-align: center; padding: 18px 16px 10px; border-bottom: 1px solid var(--line); }
+  .masthead .name { font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; font-size: clamp(30px, 6vw, 52px); line-height: 1; }
+  .masthead .tag { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  nav.sections { border-bottom: 3px solid var(--ink); }
+  nav.sections ul { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 0 22px; padding: 10px 16px; }
+  nav.sections a { text-decoration: none; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  nav.sections a.active { color: var(--red); }
+
+  main { max-width: 760px; margin: 0 auto; padding: 26px 16px 40px; }
+  .crumb { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; font-size: clamp(32px, 6vw, 46px); line-height: 1.1; margin-top: 6px; }
+  .deck { font-family: 'Source Serif 4', Georgia, serif; font-size: 19px; color: var(--muted); margin-top: 8px; }
+  .howto { margin-top: 18px; background: var(--soft); border-left: 4px solid var(--red); padding: 12px 16px; font-size: 15px; }
+  .howto strong { font-weight: 800; }
+  .howto ul { padding-left: 18px; margin-top: 4px; }
+  .howto li { margin: 3px 0; }
+
+  .bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 22px; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--line); padding: 10px 0; }
+  .bar .lbl { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .bar .val { font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+  .board { margin-top: 18px; }
+  .kicker { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  .answer {
+    min-height: 110px; margin-top: 8px; padding: 14px; border: 2px dashed var(--line); border-radius: 6px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start;
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+  .answer.empty::before { content: 'Tap the words below in order to build the headline'; color: var(--muted); font-family: 'Libre Franklin', sans-serif; font-size: 14px; align-self: center; margin: auto; }
+  .answer.solved { border-style: solid; border-color: var(--green); background: var(--green-soft); }
+  .answer.shake { animation: shake .35s; border-color: var(--red); }
+  @keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+  .bank { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; min-height: 48px; }
+  .tile {
+    font-family: 'Source Serif 4', Georgia, serif; font-size: 19px; font-weight: 600;
+    background: var(--tile); color: var(--ink); border: 1px solid var(--ink); border-bottom-width: 3px; border-radius: 5px;
+    padding: 6px 12px; cursor: pointer; transition: transform .1s;
+  }
+  .tile:hover { transform: translateY(-2px); }
+  .tile:active { transform: translateY(1px); }
+  .tile.locked { background: var(--ink); color: var(--bg); cursor: default; }
+  .tile.locked:hover { transform: none; }
+  .answer.solved .tile { border-color: var(--green); color: var(--green); background: var(--tile); cursor: default; }
+
+  .msg { min-height: 26px; margin-top: 12px; font-size: 15px; font-weight: 600; }
+  .msg.bad { color: var(--red); }
+  .msg.good { color: var(--green); }
+  .msg a { font-weight: 800; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .btn { font: inherit; font-weight: 800; font-size: 15px; border-radius: 4px; padding: 11px 20px; cursor: pointer; border: 1px solid var(--ink); background: var(--bg); color: var(--ink); }
+  .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  .end { margin-top: 18px; border-top: 6px solid var(--red); background: var(--soft); padding: 20px; }
+  .end h2 { font-family: 'Source Serif 4', Georgia, serif; font-size: 30px; line-height: 1.15; }
+  .end .rank { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  .end p { margin-top: 8px; }
+  .end ol { margin-top: 12px; padding-left: 20px; }
+  .end li { margin: 6px 0; font-family: 'Source Serif 4', Georgia, serif; font-size: 17px; }
+  .end li small { font-family: 'Libre Franklin', sans-serif; color: var(--muted); font-size: 12px; display: block; }
+  .hidden { display: none !important; }
+  .confetti { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 100; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+
+  footer { background: #111; color: #ccc; font-size: 13px; padding: 22px 16px 30px; text-align: center; }
+  footer .name { font-family: 'Source Serif 4', Georgia, serif; font-size: 22px; color: #fff; font-weight: 700; }
+  footer a { color: #fff; }
+</style>
+</head>
+<body>
+<div class="topbar"><div class="in"><span>Lincoln, Nebraska · The independent student newspaper of UNL</span><a href="https://www.dailynebraskan.com/" target="_blank" rel="noopener">dailynebraskan.com ↗</a></div></div>
+<header class="masthead">
+  <div class="name">The Daily Nebraskan</div>
+  <div class="tag">University of Nebraska–Lincoln</div>
+</header>
+<nav class="sections" aria-label="Sections">
+  <ul>
+    <li><a href="https://www.dailynebraskan.com/news/" target="_blank" rel="noopener">News</a></li>
+    <li><a href="https://www.dailynebraskan.com/sports/" target="_blank" rel="noopener">Sports</a></li>
+    <li><a href="https://www.dailynebraskan.com/culture/" target="_blank" rel="noopener">Culture</a></li>
+    <li><a href="https://www.dailynebraskan.com/opinion/" target="_blank" rel="noopener">Opinion</a></li>
+    <li><a class="active" href="#game">Mostly Mindless Entertainment</a></li>
+  </ul>
+</nav>
+
+<main id="game">
+  <div class="crumb">Mostly Mindless Entertainment · Game</div>
+  <h1>Headline Scramble</h1>
+  <p class="deck">Our copy desk dropped this week’s headlines and the words went everywhere. Can you put them back in order?</p>
+
+  <div class="howto">
+    <strong>How to play</strong>
+    <ul>
+      <li>Every puzzle is a real headline from the Daily Nebraskan, with its words shuffled.</li>
+      <li><strong>Tap the words in order</strong> to rebuild the headline. Tap a word you placed to send it back.</li>
+      <li>When every word is placed, the game checks your answer and tells you how many words are in the right spot.</li>
+      <li>Stuck? <strong>Hint</strong> locks in the next correct word (−25 points). Solve faster to earn more points.</li>
+      <li>Solve headlines in a row without hints to build a <strong>🔥 streak</strong>. Each one adds +50 bonus points.</li>
+      <li>There are 6 headlines per game. When you solve one, you can click through to read the real story.</li>
+    </ul>
+  </div>
+
+  <div class="bar">
+    <div><div class="lbl">Headline</div><div class="val" id="round">1 / 6</div></div>
+    <div><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+    <div><div class="lbl">Time</div><div class="val" id="timer">0:00</div></div>
+    <div><div class="lbl">Streak 🔥</div><div class="val" id="streak">0</div></div>
+  </div>
+
+  <section class="board" id="board">
+    <div class="kicker" id="kicker">News</div>
+    <div class="answer empty" id="answer" aria-label="Your headline"></div>
+    <div class="bank" id="bank" aria-label="Word bank"></div>
+    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn" id="hintBtn">💡 Hint (−25)</button>
+      <button class="btn" id="clearBtn">↺ Clear</button>
+      <button class="btn" id="skipBtn">Skip</button>
+      <button class="btn primary hidden" id="nextBtn">Next headline →</button>
+    </div>
+  </section>
+
+  <section class="end hidden" id="end">
+    <div class="rank" id="endRank"></div>
+    <h2 id="endTitle"></h2>
+    <p id="endMsg"></p>
+    <ol id="endList"></ol>
+    <div class="actions"><button class="btn primary" id="againBtn">Play again</button></div>
+  </section>
+</main>
+
+<footer>
+  <div class="name">The Daily Nebraskan</div>
+  <div>A <strong>Mostly Mindless Entertainment</strong> game. Every headline links to the real DN story. Built by Mackenzie Lewis for JOUR 304 with help from AI.</div>
+</footer>
+
+<script>
+(() => {
+  const DN = 'https://www.dailynebraskan.com';
+  const HEADLINES = [
+    ['News', 'Meet the man who bleeds Husker red', '/news/meet-the-man-who-bleeds-husker-red/article_10fb892f-4646-4868-90fe-4ef8f46cd267.html'],
+    ['News', 'Cornelius turns up for his first birthday', '/news/cornelius-turns-up-for-his-first-birthday/article_3ed5e227-da43-4917-b2b3-60df4174de8a.html'],
+    ['News', 'UNL Dining Services to host Thanksgiving feast Thursday', '/news/unl-dining-services-to-host-thanksgiving-feast-thursday/article_6f1e3358-cf3a-49a4-8a47-387b52a6b7fa.html'],
+    ['News', 'World champion baton twirler joins Cornhusker Marching Band', '/news/world-champion-baton-twirler-joins-cornhusker-marching-band/article_9ec8549b-490d-433f-bbe7-a6f2e23f6283.html'],
+    ['News', 'From lost keys to wedding rings, UNLPD has it all', '/news/from-lost-keys-to-wedding-rings-unlpd-has-it-all/article_70b870ed-5476-4f1b-bddb-fbf8d45aba6d.html'],
+    ['News', 'What does UNL want in its next chancellor?', '/news/what-does-unl-want-in-its-next-chancellor/article_fd5c754c-73d8-4974-bf69-dcf300d0a030.html'],
+    ['News', 'Jim Pillen reelected as Nebraska governor', '/news/jim-pillen-reelected-as-nebraska-governor/article_80ef129d-052d-4bef-b73f-ee1f60e0422c.html'],
+    ['News', 'Republican Pete Ricketts reelected for U.S. Senate', '/news/republican-pete-ricketts-reelected-for-u-s-senate/article_7e4a5609-231f-4b9e-a338-157b4be33c8f.html'],
+    ['News', 'UNL graduate student, lecturer creates art with chairs', '/news/unl-graduate-student-lecturer-creates-art-with-chairs/article_52bbeb87-a707-48d2-849a-97011f9d39a7.html'],
+    ['Sports', 'Husker football scouting report: Ohio State', '/sports/football/husker-football-scouting-report-ohio-state/article_31cf54b5-238a-401a-9efc-fdad366a1f4f.html'],
+    ['Sports', 'Nebraska volleyball’s Laney Choboy embraces new role', '/sports/nebraska-volleyball-s-laney-choboy-embraces-new-role/article_5cd7601a-fa1e-4642-af42-9aad035b056c.html'],
+    ['Sports', 'No. 1 Nebraska volleyball sweeps Iowa on an emotional senior night', '/sports/no-1-nebraska-volleyball-sweeps-iowa-on-an-emotional-senior-night/article_f68310b0-7737-48f4-b929-87d6741b4eb2.html'],
+    ['Culture', 'UNL GeoGuessr Club pins itself on the map', '/culture/unl-geoguessr-club-pins-itself-on-the-map/article_af64024c-6e8e-45f2-8a85-64dbcc47bbde.html'],
+    ['Culture', 'Lincoln Mahjong Club connects players one tile at a time', '/culture/lincoln-mahjong-club-connects-players-one-tile-at-a-time/article_fa90be44-1ad4-41ee-aea0-cb137afbc3d2.html'],
+    ['Culture', 'Food frenzy: a battle of the UNL dining halls', '/culture/food-frenzy-a-battle-of-the-unl-dining-halls/article_51472e3a-28c7-439d-8ed0-50dd4ee03110.html'],
+    ['Culture', 'Carbon Coffee Lounge is waking up the neighborhood', '/culture/carbon-coffee-lounge-is-waking-up-the-neighborhood/article_38437bbc-6d57-48b7-b38b-57f5383d84b6.html'],
+    ['Culture', 'Mana Games Cafe rolls the dice on new South Lincoln location', '/culture/mana-games-cafe-rolls-the-dice-on-new-south-lincoln-location/article_6cd8875d-4b79-44b6-8e17-34701da9012c.html'],
+    ['Culture', 'Students compete in Mr. Beast inspired Husker Games', '/culture/students-compete-in-mr-beast-inspired-husker-games/article_4b72e96d-2312-4b98-9a33-fa36d4c6ae45.html'],
+    ['Culture', 'Dig in to Harper Dining Hall’s late night menu', '/culture/dig-in-to-harper-dining-hall-s-late-night-menu/article_61da9724-ca41-444b-a14f-21089fa32954.html'],
+    ['Culture', 'Phoebe Bridgers to play in Lincoln at Pinnacle Bank Arena spring 2027', '/culture/phoebe-bridgers-to-play-in-lincoln-at-pinnacle-bank-arena-spring-2027/article_5e86f70b-9159-42b6-bf7b-d88db5713807.html'],
+    ['Opinion', 'OPINION: College is a scam, but it doesn’t have to be', '/opinion/opinion-college-is-a-scam-but-it-doesn-t-have-to-be/article_c2ceb488-6a87-4852-a56b-bc5eb19a0f44.html'],
+    ['Opinion', 'Letter to the Editor: The importance of Land Phil', '/opinion/letters_to_editor/letter-to-the-editor-the-importance-of-land-phil/article_1112077c-1d4b-4bb6-9e77-6cbb46c81cca.html'],
+  ].map(([section, title, path]) => ({ section, title, url: DN + path }));
+
+  const ROUNDS = 6;
+  const CHEERS = ['Stop the presses!', 'Front-page material!', 'The copy desk salutes you!', 'Hot off the press!', 'Pulitzer-adjacent!', 'Your editor just nodded.', 'Extra! Extra!', 'Clean copy!'];
+  function confetti() {
+    const colors = ['#c8102e', '#111111', '#f5c400', '#ffffff', '#1d55b3'];
+    for (let i = 0; i < 70; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = (1.4 + Math.random() * 1.4) + 's';
+      c.style.animationDelay = (Math.random() * 0.3) + 's';
+      c.style.border = '1px solid rgba(0,0,0,.15)';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3200);
+    }
+  }
+  const $ = id => document.getElementById(id);
+  const answerEl = $('answer'), bankEl = $('bank'), msgEl = $('msg');
+
+  let game, round, timerId;
+
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  function newGame() {
+    const pool = shuffle(HEADLINES.slice());
+    game = { list: pool.slice(0, ROUNDS), i: 0, score: 0, results: [], streak: 0 };
+    $('end').classList.add('hidden');
+    $('board').classList.remove('hidden');
+    startRound();
+  }
+
+  function startRound() {
+    const h = game.list[game.i];
+    const words = h.title.split(' ');
+    // tiles carry their correct index so duplicate words still work
+    let tiles = words.map((w, idx) => ({ w, idx }));
+    do { shuffle(tiles); } while (words.length > 1 && tiles.every((t, k) => t.idx === k));
+    round = { h, words, bank: tiles, placed: [], locked: 0, hints: 0, solved: false, start: Date.now(), secs: 0 };
+    $('kicker').textContent = h.section;
+    $('round').textContent = `${game.i + 1} / ${ROUNDS}`;
+    msgEl.textContent = ''; msgEl.className = 'msg';
+    $('nextBtn').classList.add('hidden');
+    ['hintBtn', 'clearBtn', 'skipBtn'].forEach(id => { $(id).classList.remove('hidden'); $(id).disabled = false; });
+    clearInterval(timerId);
+    timerId = setInterval(() => { if (!round.solved) { round.secs = Math.floor((Date.now() - round.start) / 1000); $('timer').textContent = fmt(round.secs); } }, 250);
+    $('timer').textContent = '0:00';
+    $('score').textContent = game.score;
+    $('streak').textContent = game.streak;
+    draw();
+  }
+
+  const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  function draw() {
+    answerEl.innerHTML = ''; bankEl.innerHTML = '';
+    answerEl.classList.toggle('empty', round.placed.length === 0);
+    answerEl.classList.toggle('solved', round.solved);
+    round.placed.forEach((t, k) => {
+      const b = document.createElement('button');
+      b.className = 'tile' + (k < round.locked ? ' locked' : '');
+      b.textContent = t.w;
+      if (!round.solved && k >= round.locked) b.addEventListener('click', () => { round.placed.splice(k, 1); round.bank.push(t); onChange(); });
+      else b.disabled = round.solved || k < round.locked;
+      answerEl.appendChild(b);
+    });
+    round.bank.forEach((t, k) => {
+      const b = document.createElement('button');
+      b.className = 'tile'; b.textContent = t.w;
+      b.addEventListener('click', () => { round.bank.splice(k, 1); round.placed.push(t); onChange(); });
+      bankEl.appendChild(b);
+    });
+  }
+
+  function onChange() {
+    msgEl.textContent = ''; msgEl.className = 'msg';
+    draw();
+    if (round.bank.length === 0) check();
+  }
+
+  function check() {
+    const guess = round.placed.map(t => t.w).join(' ');
+    if (guess === round.h.title) return solve();
+    const right = round.placed.filter((t, k) => t.w === round.words[k]).length;
+    msgEl.textContent = `Not quite. ${right} of ${round.words.length} words are in the right spot.`;
+    msgEl.className = 'msg bad';
+    answerEl.classList.remove('shake'); void answerEl.offsetWidth; answerEl.classList.add('shake');
+  }
+
+  function solve() {
+    round.solved = true;
+    round.secs = Math.floor((Date.now() - round.start) / 1000);
+    if (round.hints === 0) game.streak++; else game.streak = 0;
+    const streakBonus = round.hints === 0 && game.streak > 1 ? 50 * (game.streak - 1) : 0;
+    const pts = Math.max(25, 100 + Math.max(0, 60 - round.secs) * 2 - round.hints * 25) + streakBonus;
+    game.score += pts;
+    $('streak').textContent = game.streak;
+    confetti();
+    game.results.push({ h: round.h, pts, solved: true, secs: round.secs });
+    $('score').textContent = game.score;
+    msgEl.className = 'msg good';
+    const cheer = CHEERS[Math.random() * CHEERS.length | 0];
+    msgEl.textContent = `${cheer} +${pts} points in ${fmt(round.secs)}${streakBonus ? ` (🔥 +${streakBonus} streak bonus)` : ''}. `;
+    const a = document.createElement('a');
+    a.href = round.h.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Read the real story →';
+    msgEl.appendChild(a);
+    finishRoundUI();
+  }
+
+  function finishRoundUI() {
+    clearInterval(timerId);
+    ['hintBtn', 'clearBtn', 'skipBtn'].forEach(id => $(id).classList.add('hidden'));
+    $('nextBtn').textContent = game.i + 1 < ROUNDS ? 'Next headline →' : 'See my score →';
+    $('nextBtn').classList.remove('hidden');
+    draw();
+    $('nextBtn').focus();
+  }
+
+  function hint() {
+    if (round.solved) return;
+    // move everything unlocked back to the bank, then lock in the next correct word
+    round.bank.push(...round.placed.splice(round.locked));
+    const target = round.words[round.locked];
+    const k = round.bank.findIndex(t => t.w === target);
+    round.placed.push(round.bank.splice(k, 1)[0]);
+    round.locked++; round.hints++;
+    msgEl.textContent = `Hint: “${target}” is word ${round.locked}.`; msgEl.className = 'msg';
+    draw();
+    if (round.bank.length === 0) check();
+  }
+
+  function clearAll() {
+    if (round.solved) return;
+    round.bank.push(...round.placed.splice(round.locked));
+    onChange();
+  }
+
+  function skip() {
+    if (round.solved) return;
+    round.solved = true;
+    game.results.push({ h: round.h, pts: 0, solved: false });
+    game.streak = 0; $('streak').textContent = 0;
+    round.placed = round.words.map((w, idx) => ({ w, idx })); round.bank = []; round.locked = 0;
+    msgEl.className = 'msg';
+    msgEl.textContent = 'Skipped. Here’s the real headline. ';
+    const a = document.createElement('a');
+    a.href = round.h.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Read the story →';
+    msgEl.appendChild(a);
+    finishRoundUI();
+  }
+
+  function next() {
+    game.i++;
+    if (game.i < ROUNDS) startRound(); else endGame();
+  }
+
+  function rankFor(s) {
+    if (s >= 900) return 'Editor-in-Chief';
+    if (s >= 650) return 'Copy Chief';
+    if (s >= 400) return 'Copy Editor';
+    if (s >= 150) return 'Staff Writer';
+    return 'Intern';
+  }
+
+  function endGame() {
+    clearInterval(timerId);
+    $('board').classList.add('hidden');
+    const solved = game.results.filter(r => r.solved).length;
+    $('endRank').textContent = 'Rank: ' + rankFor(game.score);
+    $('endTitle').textContent = `You restored ${solved} of ${ROUNDS} headlines.`;
+    $('endMsg').textContent = `Final score: ${game.score} points. Here are the stories behind them:`;
+    const list = $('endList'); list.innerHTML = '';
+    game.results.forEach(r => {
+      const li = document.createElement('li');
+      const a = document.createElement('a'); a.href = r.h.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.h.title;
+      const sm = document.createElement('small');
+      sm.textContent = `${r.h.section} · ${r.solved ? `+${r.pts} points, solved in ${fmt(r.secs)}` : 'skipped'}`;
+      li.append(a, sm); list.appendChild(li);
+    });
+    $('end').classList.remove('hidden');
+    $('end').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $('hintBtn').addEventListener('click', hint);
+  $('clearBtn').addEventListener('click', clearAll);
+  $('skipBtn').addEventListener('click', skip);
+  $('nextBtn').addEventListener('click', next);
+  $('againBtn').addEventListener('click', () => { newGame(); $('game').scrollIntoView({ behavior: 'smooth' }); });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
