@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deadline Climb</title>
+<meta name="description" content="Deadline Climb: it's election night at the Daily Nebraskan. Solve quick headline puzzles to unlock each ladder. Climb the newsroom, dodge runaway paper rolls and grab real DN politics stories on the way up. A Mostly Mindless Entertainment arcade game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f2ea;
+    --paper: #fffdf8;
+    --ink: #1a1816;
+    --muted: #6a645c;
+    --line: #e2dbcf;
+    --red: #d00000;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141210;
+      --paper: #1e1b18;
+      --ink: #f3eee7;
+      --muted: #a69f95;
+      --line: #36312b;
+      --red: #ff4a4a;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: var(--red); text-underline-offset: 3px; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+
+  header.mast { border-bottom: 3px double var(--ink); padding: 18px 0 12px; text-align: center; }
+  .section-tag { display: inline-block; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; padding: 4px 10px; border-radius: 2px; }
+  .paper-name { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; margin-top: 10px; color: var(--muted); }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: clamp(38px, 8vw, 64px); line-height: 1; letter-spacing: -.02em; margin-top: 4px; }
+  h1 span { color: var(--red); }
+  .dek { color: var(--muted); margin-top: 10px; font-size: 16px; max-width: 620px; margin-inline: auto; }
+
+  main { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 24px; padding: 24px 0 40px; align-items: start; justify-content: center; }
+  @media (max-width: 860px) { main { grid-template-columns: minmax(0, 520px); } }
+
+  .board-card { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; min-width: 0; }
+  .stat .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
+  .stat .val { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: 22px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .stat .val.hearts { color: var(--red); letter-spacing: 1px; }
+
+  .stage { position: relative; width: 100%; aspect-ratio: 3 / 4; }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 6px; border: 2px solid var(--ink); touch-action: none; }
+  .overlay { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 22px; gap: 12px; background: color-mix(in srgb, var(--paper) 93%, transparent); border-radius: 6px; overflow-y: auto; }
+  .overlay.hidden { display: none; }
+  .overlay h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: clamp(26px, 5vw, 36px); line-height: 1.1; }
+  .overlay p { color: var(--muted); max-width: 400px; font-size: 15px; }
+  .btn { font: inherit; font-weight: 700; font-size: 16px; cursor: pointer; background: var(--red); color: #fff; border: 0; border-radius: 6px; padding: 12px 26px; }
+  .btn:hover { filter: brightness(1.08); }
+  .rank { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  .report { text-align: left; width: 100%; max-width: 420px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .report h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
+  .report ol { padding-left: 20px; font-size: 14px; }
+  .report li { margin: 3px 0; }
+  .keys { font-size: 13px; color: var(--muted); }
+  .overlay.prompt { background: color-mix(in srgb, var(--paper) 97%, transparent); gap: 8px; }
+  .pq { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 440px; }
+  .pq.answer-line { min-height: 46px; border: 2px dashed var(--line); border-radius: 6px; padding: 8px; width: 100%; }
+  .pq.bank { margin-top: 4px; }
+  .ptile { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 17px; background: var(--paper); color: var(--ink); border: 1px solid var(--ink); border-bottom-width: 3px; border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+  .ptile:hover { background: var(--line); }
+  .ptile.good { background: #17803d; border-color: #17803d; color: #fff; }
+  .ptile.bad { background: var(--red); border-color: var(--red); color: #fff; }
+  .pmsg { min-height: 22px; font-size: 14px; font-weight: 700; }
+  .pmsg.good { color: #17803d; }
+  .pmsg.bad { color: var(--red); }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+
+  .ticker { margin-top: 10px; border-top: 2px solid var(--ink); padding-top: 8px; min-height: 52px; font-size: 14px; }
+  .ticker .kicker { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  .ticker a { color: var(--ink); font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 17px; text-decoration: none; }
+  .ticker a:hover { text-decoration: underline; }
+
+  .pad { display: none; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; user-select: none; -webkit-user-select: none; }
+  @media (pointer: coarse) { .pad { display: flex; } }
+  .pad .dirs { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 50px); gap: 6px; }
+  .pad button { font-size: 20px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; touch-action: none; }
+  .pad button.on { background: var(--line); }
+  .pad .u { grid-column: 2; grid-row: 1; }
+  .pad .l { grid-column: 1; grid-row: 2; }
+  .pad .d { grid-column: 2; grid-row: 2; }
+  .pad .r { grid-column: 3; grid-row: 2; }
+  .pad .jump { width: 96px; height: 96px; border-radius: 50%; background: var(--red); color: #fff; border: 0; font-weight: 800; font-size: 16px; letter-spacing: .06em; }
+
+  aside .box { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  aside h2 { font-family: 'Fraunces', Georgia, serif; font-size: 20px; margin-bottom: 8px; }
+  aside ol, aside ul { padding-left: 18px; font-size: 14px; }
+  aside li { margin: 6px 0; }
+  .small { font-size: 13px; color: var(--muted); }
+  kbd { font-family: inherit; font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+
+  footer { border-top: 1px solid var(--line); padding: 16px 0 32px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <span class="section-tag">Mostly Mindless Entertainment</span>
+    <div class="paper-name">The Daily Nebraskan</div>
+    <h1>Deadline <span>Climb</span></h1>
+    <p class="dek">It's election night. The results just flipped, and the printing press on the top floor has gone haywire, launching giant paper rolls down the newsroom. Every ladder is padlocked by the copy desk. Solve a quick headline puzzle to unlock it, climb past the paper rolls and slam the big red STOP button.</p>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="board-card" aria-label="Game">
+    <div class="hud">
+      <div class="stat"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+      <div class="stat"><div class="lbl">Edition</div><div class="val" id="level">1</div></div>
+      <div class="stat"><div class="lbl">Bonus</div><div class="val" id="bonus">500</div></div>
+      <div class="stat"><div class="lbl">Lives</div><div class="val hearts" id="lives">♥♥♥</div></div>
+    </div>
+
+    <div class="stage">
+      <canvas id="game" aria-label="Deadline Climb game"></canvas>
+
+      <div class="overlay" id="startOverlay">
+        <h2>Deadline Climb</h2>
+        <p>Climb to the top floor and hit the <strong style="color:var(--red)">STOP</strong> button. Each floor's ladders are 🔒 locked. Walk up to one and press ↑ to get a quick puzzle made from a real Daily Nebraskan headline. Solve it and the ladder opens.</p>
+        <button class="btn" id="startBtn">Start climbing</button>
+        <p class="keys"><kbd>←</kbd><kbd>→</kbd> walk · <kbd>↑</kbd><kbd>↓</kbd> climb · <kbd>Space</kbd> jump · <kbd>P</kbd> pause</p>
+      </div>
+
+      <div class="overlay hidden" id="levelOverlay">
+        <div class="rank" id="levelKicker">Edition 1 filed</div>
+        <h2>Presses stopped!</h2>
+        <p id="levelMsg"></p>
+        <button class="btn" id="nextBtn">Next edition</button>
+      </div>
+
+      <div class="overlay hidden prompt" id="promptOverlay" role="dialog" aria-label="Headline puzzle">
+        <div class="rank" id="promptKicker">🔒 Ladder locked</div>
+        <h2 id="promptTitle">Find the typo</h2>
+        <p id="promptHelp"></p>
+        <div class="pq" id="promptAnswer"></div>
+        <div class="pq bank" id="promptBank"></div>
+        <div class="pmsg" id="promptMsg" aria-live="polite"></div>
+      </div>
+
+      <div class="overlay hidden" id="pauseOverlay">
+        <h2>Coffee break ☕</h2>
+        <p>The press is paused too. Press P or the button to keep going.</p>
+        <button class="btn" id="resumeBtn">Back to work</button>
+      </div>
+
+      <div class="overlay hidden" id="overOverlay">
+        <div class="rank" id="overRank"></div>
+        <h2>Flattened by newsprint!</h2>
+        <p id="overMsg"></p>
+        <button class="btn" id="againBtn">Try again</button>
+        <div class="report" id="report">
+          <h3>Stories from your climb — read them on dailynebraskan.com</h3>
+          <ol id="reportList"></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticker" aria-live="polite">
+      <div class="kicker" id="tickKicker">Latest grab</div>
+      <div id="tickBody" class="small">Grab a newspaper to see a real DN politics headline here.</div>
+    </div>
+
+    <div class="pad" aria-label="Touch controls">
+      <div class="dirs">
+        <button class="u" data-k="up" aria-label="Climb up">▲</button>
+        <button class="l" data-k="left" aria-label="Walk left">◀</button>
+        <button class="d" data-k="down" aria-label="Climb down">▼</button>
+        <button class="r" data-k="right" aria-label="Walk right">▶</button>
+      </div>
+      <button class="jump" data-k="jump" aria-label="Jump">JUMP</button>
+    </div>
+  </section>
+
+  <aside>
+    <div class="box">
+      <h2>How to play</h2>
+      <ol>
+        <li>Walk with <kbd>←</kbd> <kbd>→</kbd> (or <kbd>A</kbd> <kbd>D</kbd>). Stand on a ladder and press <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>W</kbd> <kbd>S</kbd>) to climb.</li>
+        <li>Ladders with a 🔒 are locked. Press <kbd>↑</kbd> at one to get a <strong>headline puzzle</strong>: tap the misspelled word, or tap words in order to rebuild a real DN headline. Solving it unlocks every ladder on that floor for <strong>+300</strong>. The press pauses while you think, and a wrong tap costs 50.</li>
+        <li>Press <kbd>Space</kbd> to jump over the <strong>paper rolls</strong> tumbling down from the press. Each roll you clear is worth <strong>100</strong>.</li>
+        <li>Grab the floating <strong>newspapers</strong> for <strong>250</strong> each. Every one is a real Daily Nebraskan story about elections, ballot initiatives or campus politics.</li>
+        <li>Reach the top floor and touch the red <strong>STOP</strong> button to finish the edition. Get there fast to keep more of the <strong>bonus</strong>.</li>
+        <li>You have <strong>3 lives</strong>. Each new edition makes the press a little faster.</li>
+      </ol>
+      <p class="small" style="margin-top:8px">On a phone, use the arrow pad and the big JUMP button under the game.</p>
+    </div>
+    <div class="box">
+      <h2>Newsroom ranks</h2>
+      <ul class="small">
+        <li>Under 2,000: Intern</li>
+        <li>2,000+: Staff Writer</li>
+        <li>5,000+: Section Editor</li>
+        <li>9,000+: Managing Editor</li>
+        <li>14,000+: Editor-in-Chief</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+</div>
+
+<footer>
+  <div class="wrap">
+    A <strong>Mostly Mindless Entertainment</strong> game for <a href="https://www.dailynebraskan.com/" target="_blank" rel="noopener">The Daily Nebraskan</a>. Every newspaper links to a real DN story.<br>
+    Built by Mackenzie Lewis for JOUR 304 with help from AI.
+  </div>
+</footer>
+
+<script>
+(() => {
+  // ---------- Real DN stories ----------
+  const DN = 'https://www.dailynebraskan.com';
+  const STORIES = [
+    ['Election', 'Jim Pillen reelected as Nebraska governor', '/news/jim-pillen-reelected-as-nebraska-governor/article_80ef129d-052d-4bef-b73f-ee1f60e0422c.html'],
+    ['Election', 'Republican Pete Ricketts reelected for U.S. Senate', '/news/republican-pete-ricketts-reelected-for-u-s-senate/article_7e4a5609-231f-4b9e-a338-157b4be33c8f.html'],
+    ['Election', 'Mike Flood wins race for Nebraska\u2019s 1st Congressional District', '/news/mike-flood-wins-race-for-nebraska-s-1st-congressional-district/article_f782aa43-f4fc-4108-a29b-081d089cc860.html'],
+    ['Election', 'Denise Powell takes House seat for Nebraska\u2019s 2nd Congressional District', '/news/denise-powell-takes-house-seat-for-nebraska-s-2nd-congressional-district/article_9831f5b8-0101-41b3-9dc1-7a8cd8d0a1ef.html'],
+    ['Election', 'Republican Scott Petersen wins Nebraska secretary of state race', '/news/republican-scott-petersen-wins-nebraska-secretary-of-state-race/article_683e8ed6-224c-4e44-803f-bfadb5f8c398.html'],
+    ['Election', 'Republican Mike Hilgers wins attorney general race', '/news/republican-mike-hilgers-wins-attorney-general-race/article_da02aee3-80e4-4fd5-9485-36dfcc47673b.html'],
+    ['Election', 'Comstock, Butler and Solomon to serve on Board of Regents', '/news/comstock-butler-and-solomon-to-serve-on-board-of-regents/article_e62c9f51-c5c2-4dd7-b2aa-1a8baa8fe5e0.html'],
+    ['Election', 'Midterm Live Updates: Jim Pillen secures victory in Nebraska governor\u2019s race', '/news/midterm-live-updates-jim-pillen-secures-victory-in-nebraska-governor-s-race/article_0a55c38b-39a9-4625-8b27-eec7543dea3b.html'],
+    ['Ballot', 'Fairness for Girls Initiative passes', '/news/fairness-for-girls-initiative-passes/article_85dc4336-4589-4794-9b57-87950dd5bf3c.html'],
+    ['Ballot', 'Legislative term limit amendment fails to pass, unofficial results show', '/news/legislative-term-limit-amendment-fails-to-pass-unofficial-results-show/article_fc896321-ad36-4d98-9b3c-0f51db0296dc.html'],
+    ['Ballot', 'Initiatives expanding sports wagering to online platforms do not pass', '/news/initiatives-expanding-sports-wagering-to-online-platforms-do-not-pass/article_0ee0fce8-63fa-4ed9-9919-00a077160e3d.html'],
+    ['Ballot', 'UNL students share opinions on online sports betting initiatives', '/news/unl-students-share-opinions-on-online-sports-betting-initiatives/article_afbf492d-c4e6-4657-be7e-71679738d742.html'],
+    ['Ballot', 'Hearing highlights debate over trans athlete ballot initiative', '/news/hearing-highlights-debate-over-trans-athlete-ballot-initiative/article_0415816b-1e41-4792-8c1c-00ff9f846426.html'],
+    ['Ballot', '2026 Nebraska Ballot Initiatives: Public hearing on Online Sports Wagering', '/news/2026-nebraska-ballot-initiatives-public-hearing-on-online-sports-wagering/article_ef236732-846a-4fe4-a799-4d1e2367f3b6.html'],
+    ['Campaign', 'Hillary Clinton rallies Nebraska Democrats in Omaha ahead of midterms', '/news/administration/hillary-clinton-rallies-nebraska-democrats-in-omaha-ahead-of-midterms/article_9a25010d-7f3b-4d01-ad7f-4de3fdd241f3.html'],
+    ['Campaign', '\u2018Politics will care about you\u2019: Osborn\u2019s message to young voters', '/news/politics-will-care-about-you-osborn-s-message-to-young-voters/article_3c54c890-5ce7-4ebc-b15f-9cdcf8341675.html'],
+    ['Campaign', 'Voter Guide: 6 candidates for NU Board of Regents share plans if elected', '/news/voter-guide-6-candidates-for-nu-board-of-regents-share-plans-if-elected/article_99ab539d-4d68-4c19-b4ba-baefa5a30a1c.html'],
+    ['Policy', 'Nebraska College of Law reopening immigration clinic next year', '/news/nebraska-college-of-law-reopening-immigration-clinic-next-year/article_a46d1410-da17-4527-9e6d-0c89efea0479.html'],
+    ['Policy', 'UNL to lead cybersecurity in national AI research project', '/news/unl-to-lead-cybersecurity-in-national-ai-research-project/article_0abbd36c-0869-400d-968d-326cc5811816.html'],
+    ['Policy', 'UNL hosts reflective lecture series on America\u2019s first 250 years', '/news/city/unl-hosts-reflective-lecture-series-on-america-s-first-250-years/article_ad404110-f6d8-464c-8965-38105d797315.html'],
+    ['Campus politics', 'What does UNL want in its next chancellor?', '/news/what-does-unl-want-in-its-next-chancellor/article_fd5c754c-73d8-4974-bf69-dcf300d0a030.html'],
+    ['Campus politics', 'University of Nebraska seeks student, faculty input on next UNL chancellor', '/news/university-of-nebraska-seeks-student-faculty-input-on-next-unl-chancellor/article_2a9e07a4-29b5-4339-83a6-f9075ccd71c1.html'],
+    ['Campus politics', 'NU President Jeffery Gold gets new contract, modified bonus', '/news/nu-president-jeffery-gold-gets-new-contract-modified-bonus/article_d95f95d7-c375-4f9e-80c6-c97219c5d00f.html'],
+    ['Campus politics', 'ASUN to hold special election on new constitution, judicial code', '/news/asun/asun-to-hold-special-election-on-new-constitution-judicial-code/article_e1df6e1b-7bde-45ba-b50a-f558c500a871.html'],
+    ['Opinion', 'OPINION: Three key takeaways from Nebraska\u2019s midterm election results', '/opinion/opinion-three-key-takeaways-from-nebraska-s-midterm-election-results/article_ec5e7af8-d81f-4d79-b340-d2185b9d1c46.html'],
+    ['Opinion', 'OPINION: The blue wave could still end in a generational fumble', '/opinion/opinion-the-blue-wave-could-still-end-in-a-generational-fumble/article_3153a5ad-a6fb-4a77-9aec-f40a0b1b1267.html'],
+  ].map(([section, title, path]) => ({ section, title, url: DN + path }));
+
+  // ---------- World ----------
+  const W = 480, H = 640;
+  const GAP = 44;           // width of the hole each roll drops through
+  const FLOOR_T = 10;       // floor thickness
+  const FLOOR_Y = [612, 512, 412, 312, 212, 122];   // top surface of each floor, bottom to top
+  const TOP = FLOOR_Y.length - 1;
+  const floorDir = i => (i % 2 === 1 ? 1 : -1);      // which way rolls travel on each floor
+  const gapOf = i => i === 0 ? null : (floorDir(i) > 0 ? [W - GAP, W] : [0, GAP]);
+  const inGap = (i, x) => { const g = gapOf(i); return g && x > g[0] && x < g[1]; };
+
+  // ladders connect floor `lo` to floor lo+1
+  const LADDERS = [
+    { lo: 0, x: 140 }, { lo: 0, x: 340 },
+    { lo: 1, x: 250 }, { lo: 1, x: 400 },
+    { lo: 2, x: 90 },  { lo: 2, x: 300 },
+    { lo: 3, x: 190 }, { lo: 3, x: 410 },
+    { lo: 4, x: 250 }, { lo: 4, x: 380 },
+  ].map(l => ({ ...l, top: FLOOR_Y[l.lo + 1], bottom: FLOOR_Y[l.lo] }));
+
+  const PRESS = { x: 8, y: FLOOR_Y[TOP] - 78, w: 80, h: 78 };
+  const BUTTON = { x: 112, y: FLOOR_Y[TOP] };
+
+  const G = 1500, JUMP_V = 470, WALK = 150, CLIMB = 110;
+
+  // ---------- Canvas ----------
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  function sizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  sizeCanvas();
+
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const $ = id => document.getElementById(id);
+
+  // ---------- Input ----------
+  const keys = { left: false, right: false, up: false, down: false, jump: false };
+  let jumpQueued = false;
+  const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', Space: 'jump', KeyZ: 'jump', KeyX: 'jump' };
+  document.addEventListener('keydown', e => {
+    const k = KEYMAP[e.code];
+    if (k) {
+      if (G_.mode === 'play') e.preventDefault();
+      if (k === 'jump' && !keys.jump) jumpQueued = true;
+      keys[k] = true;
+    } else if (e.code === 'KeyP' || e.code === 'Escape') {
+      togglePause();
+    } else if (e.code === 'Enter') {
+      if (G_.mode === 'title' || G_.mode === 'over') startGame();
+      else if (G_.mode === 'levelDone') nextLevel();
+    }
+  });
+  document.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+  document.querySelectorAll('.pad button').forEach(b => {
+    const k = b.dataset.k;
+    const on = e => { e.preventDefault(); if (k === 'jump') jumpQueued = true; keys[k] = true; b.classList.add('on'); };
+    const off = () => { keys[k] = false; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', on);
+    b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+  });
+
+  // ---------- State ----------
+  const G_ = { mode: 'title' };
+  let unlocked = [];
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('dn-deadline-climb-best') || '0', 10) || 0; } catch (e) {}
+
+  let player, rolls, tips, pops, level, score, lives, bonus, spawnTimer, deck, grabbed, levelGrabbed, deadTimer, invuln, last, t;
+
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const rollSpeed = () => 80 + (level - 1) * 14;
+  const spawnEvery = () => Math.max(1.4, 3.2 - (level - 1) * 0.3);
+  const ladderChance = () => level >= 2 ? Math.min(0.35, 0.12 * (level - 1)) : 0;
+
+  function resetPlayer() {
+    player = { x: 440, y: FLOOR_Y[0], vy: 0, onGround: true, ladder: null, face: -1, walkT: 0, floor: 0 };
+    invuln = 1.5;
+  }
+
+  function placeTips() {
+    tips = [];
+    for (let f = 1; f <= 4; f++) {
+      let x, tries = 0;
+      do {
+        x = 50 + Math.random() * (W - 100);
+        tries++;
+      } while (tries < 50 && (inGap(f, x) || Math.abs(x - (gapOf(f)[0] + GAP / 2)) < 60 || LADDERS.some(l => Math.abs(l.x - x) < 34)));
+      if (!deck.length) deck = shuffle(STORIES.slice());
+      tips.push({ x, y: FLOOR_Y[f] - 30, floor: f, story: deck.pop(), got: false });
+    }
+  }
+
+  function startGame() {
+    level = 1; score = 0; lives = 3;
+    deck = shuffle(STORIES.slice());
+    grabbed = [];
+    $('tickKicker').textContent = 'Latest grab';
+    $('tickBody').className = 'small';
+    $('tickBody').textContent = 'Grab a newspaper to see a real DN politics headline here.';
+    beginLevel();
+  }
+
+  function beginLevel() {
+    rolls = []; pops = []; levelGrabbed = [];
+    bonus = 500 + level * 100;
+    spawnTimer = 1.0;
+    deadTimer = 0;
+    resetPlayer();
+    placeTips();
+    unlocked = [false, false, false, false, false];
+    ['startOverlay', 'levelOverlay', 'overOverlay', 'pauseOverlay', 'promptOverlay'].forEach(id => $(id).classList.add('hidden'));
+    G_.mode = 'play';
+    hud();
+    last = performance.now();
+  }
+
+  function nextLevel() { level++; beginLevel(); }
+
+  function togglePause() {
+    if (G_.mode === 'play') { G_.mode = 'paused'; $('pauseOverlay').classList.remove('hidden'); }
+    else if (G_.mode === 'paused') { G_.mode = 'play'; $('pauseOverlay').classList.add('hidden'); last = performance.now(); }
+  }
+
+  function hud() {
+    $('score').textContent = score.toLocaleString();
+    $('level').textContent = level;
+    $('bonus').textContent = Math.max(0, Math.round(bonus));
+    $('lives').textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(Math.max(0, 3 - lives));
+  }
+
+  function pop(x, y, text, color) { pops.push({ x, y, text, color, t: 0 }); }
+
+  function showStory(story) {
+    $('tickKicker').textContent = `${story.section} · +250`;
+    const body = $('tickBody');
+    body.className = ''; body.innerHTML = '';
+    const a = document.createElement('a');
+    a.href = story.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = story.title;
+    body.appendChild(a);
+  }
+
+  // ---------- Update ----------
+  function update(dt) {
+    t += dt;
+    if (deadTimer > 0) {
+      deadTimer -= dt;
+      updatePops(dt);
+      if (deadTimer <= 0) {
+        if (lives <= 0) return gameOver();
+        rolls = []; spawnTimer = 1.2; resetPlayer();
+      }
+      return;
+    }
+    invuln = Math.max(0, invuln - dt);
+    bonus = Math.max(0, bonus - dt * 6);
+
+    updatePlayer(dt);
+    updateRolls(dt);
+    updatePops(dt);
+
+    // tips
+    for (const tip of tips) {
+      if (tip.got) continue;
+      if (Math.abs(tip.x - player.x) < 18 && Math.abs((tip.y + 4) - (player.y - 14)) < 24) {
+        tip.got = true; score += 250;
+        grabbed.push(tip.story); levelGrabbed.push(tip.story);
+        pop(tip.x, tip.y - 10, '+250', css('--red'));
+        showStory(tip.story);
+      }
+    }
+
+    // goal
+    if (player.floor === TOP && player.ladder === null && Math.abs(player.x - BUTTON.x) < 18 && player.y <= FLOOR_Y[TOP] + 1) {
+      return levelDone();
+    }
+    hud();
+  }
+
+  function findLadder(x, yFeet, wantUp) {
+    return LADDERS.find(l => Math.abs(l.x - x) < 14 && (wantUp ? Math.abs(yFeet - l.bottom) < 3 || (yFeet < l.bottom && yFeet > l.top) : Math.abs(yFeet - l.top) < 3));
+  }
+
+  function updatePlayer(dt) {
+    const p = player;
+    if (p.ladder) {
+      const l = p.ladder;
+      p.x = l.x;
+      if (keys.up) p.y -= CLIMB * dt;
+      if (keys.down) p.y += CLIMB * dt;
+      if (keys.up || keys.down) p.walkT += dt;
+      if (p.y <= l.top) { p.y = l.top; p.ladder = null; p.onGround = true; p.vy = 0; p.floor = l.lo + 1; }
+      else if (p.y >= l.bottom) { p.y = l.bottom; p.ladder = null; p.onGround = true; p.vy = 0; p.floor = l.lo; }
+      jumpQueued = false;
+      return;
+    }
+
+    // start climbing?
+    if (p.onGround && keys.up) {
+      const l = LADDERS.find(l => Math.abs(l.x - p.x) < 14 && Math.abs(p.y - l.bottom) < 3);
+      if (l && !unlocked[l.lo]) { openPrompt(l.lo); return; }
+      if (l) { p.ladder = l; p.x = l.x; jumpQueued = false; return; }
+    }
+    if (p.onGround && keys.down) {
+      const l = LADDERS.find(l => Math.abs(l.x - p.x) < 14 && Math.abs(p.y - l.top) < 3);
+      if (l) { p.ladder = l; p.x = l.x; p.y += 2; jumpQueued = false; return; }
+    }
+
+    let vx = 0;
+    if (keys.left) vx -= WALK;
+    if (keys.right) vx += WALK;
+    if (vx) { p.face = Math.sign(vx); if (p.onGround) p.walkT += dt; }
+    p.x = Math.max(9, Math.min(W - 9, p.x + vx * dt));
+
+    if (jumpQueued && p.onGround) { p.vy = -JUMP_V; p.onGround = false; }
+    jumpQueued = false;
+
+    p.vy += G * dt;
+    const ny = p.y + p.vy * dt;
+    let landed = false;
+    if (p.vy >= 0) {
+      for (let i = 0; i < FLOOR_Y.length; i++) {
+        const fy = FLOOR_Y[i];
+        if (p.y <= fy + 0.5 && ny >= fy && !inGap(i, p.x)) {
+          p.y = fy; p.vy = 0; landed = true; p.floor = i; break;
+        }
+      }
+    }
+    if (!landed) p.y = ny;
+    p.onGround = landed;
+    if (p.y > H + 40) { p.y = FLOOR_Y[0]; p.vy = 0; } // safety net
+  }
+
+  function updateRolls(dt) {
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnTimer = spawnEvery() * (0.8 + Math.random() * 0.5);
+      rolls.push({ x: PRESS.x + PRESS.w + 4, y: FLOOR_Y[TOP] - 11, r: 11, floor: TOP, dir: 1, vy: 0, state: 'roll', ang: 0, cleared: false, skip: new Set() });
+    }
+    const sp = rollSpeed();
+    const p = player;
+    for (const b of rolls) {
+      if (b.state === 'roll') {
+        b.x += b.dir * sp * dt;
+        b.ang += b.dir * sp * dt / b.r;
+        b.y = FLOOR_Y[b.floor] - b.r;
+        if (inGap(b.floor, b.x)) { b.state = 'fall'; b.vy = 40; }
+        else if (b.floor > 0) {
+          // maybe tumble down a ladder
+          for (const l of LADDERS) {
+            if (l.lo + 1 !== b.floor || b.skip.has(l)) continue;
+            if (Math.abs(b.x - l.x) < 4) {
+              b.skip.add(l);
+              if (Math.random() < ladderChance()) { b.state = 'ladder'; b.x = l.x; b.ladder = l; }
+            }
+          }
+        }
+        if (b.floor === 0 && b.x < -20) b.dead = true;
+      } else if (b.state === 'fall') {
+        b.vy += G * 0.6 * dt; b.y += b.vy * dt;
+        const below = b.floor - 1;
+        if (b.y + b.r >= FLOOR_Y[below]) { b.floor = below; b.dir = floorDir(below); b.state = 'roll'; b.cleared = false; b.y = FLOOR_Y[below] - b.r; }
+      } else if (b.state === 'ladder') {
+        b.y += 90 * dt; b.ang += 0.1;
+        const below = b.ladder.lo;
+        if (b.y + b.r >= FLOOR_Y[below]) { b.floor = below; b.dir = floorDir(below); b.state = 'roll'; b.cleared = false; b.y = FLOOR_Y[below] - b.r; }
+      }
+
+      // hit test: player body box vs roll circle (forgiving)
+      const bx = Math.max(p.x - 6, Math.min(b.x, p.x + 6));
+      const by = Math.max(p.y - 24, Math.min(b.y, p.y - 2));
+      const d = Math.hypot(b.x - bx, b.y - by);
+      if (d < b.r - 2 && invuln <= 0) { die(); return; }
+
+      // jumped over it?
+      if (!b.cleared && !p.onGround && !p.ladder && b.state === 'roll' && b.floor === p.floor && Math.abs(b.x - p.x) < 10 && p.y < b.y - b.r + 2) {
+        b.cleared = true; score += 100; pop(p.x, p.y - 34, '+100', css('--ink'));
+      }
+    }
+    rolls = rolls.filter(b => !b.dead);
+  }
+
+  function updatePops(dt) { for (const q of pops) q.t += dt; pops = pops.filter(q => q.t < 0.9); }
+
+  function die() {
+    lives--; deadTimer = 1.3; hud();
+    pop(player.x, player.y - 40, 'OOF!', css('--red'));
+  }
+
+  function levelDone() {
+    G_.mode = 'levelDone';
+    const b = Math.round(bonus);
+    score += 1000 + b;
+    hud();
+    $('levelKicker').textContent = `Edition ${level} filed`;
+    $('levelMsg').textContent = `+1,000 for stopping the press and +${b.toLocaleString()} speed bonus. You grabbed ${levelGrabbed.length} of 4 stories on the way up. The next edition rolls a little faster.`;
+    $('levelOverlay').classList.remove('hidden');
+    $('nextBtn').focus();
+  }
+
+  function rankFor(s) {
+    if (s >= 14000) return 'Editor-in-Chief';
+    if (s >= 9000) return 'Managing Editor';
+    if (s >= 5000) return 'Section Editor';
+    if (s >= 2000) return 'Staff Writer';
+    return 'Intern';
+  }
+
+  function gameOver() {
+    G_.mode = 'over';
+    let nb = false;
+    if (score > best) { best = score; nb = true; try { localStorage.setItem('dn-deadline-climb-best', String(best)); } catch (e) {} }
+    $('overRank').textContent = 'Rank: ' + rankFor(score);
+    $('overMsg').textContent = `You reached edition ${level} and scored ${score.toLocaleString()} points.${nb ? ' New personal best!' : ` Your best: ${best.toLocaleString()}.`}`;
+    const list = $('reportList'); list.innerHTML = '';
+    const seen = new Set();
+    grabbed.forEach(s => {
+      if (seen.has(s.url)) return; seen.add(s.url);
+      const li = document.createElement('li');
+      const a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = s.title;
+      li.append(a, ` — ${s.section}`); list.appendChild(li);
+    });
+    $('report').style.display = seen.size ? '' : 'none';
+    $('overOverlay').classList.remove('hidden');
+    $('againBtn').focus();
+  }
+
+  // ---------- Headline puzzles ----------
+  const VOWELS = 'aeiou';
+  function makeTypo(word) {
+    const lower = word.toLowerCase();
+    for (const kind of shuffle(['swap', 'double', 'drop', 'vowel'])) {
+      let out = null; const opts = [];
+      if (kind === 'swap') { for (let i = 1; i < word.length - 1; i++) if (lower[i] !== lower[i + 1]) opts.push(i); if (opts.length) { const i = opts[Math.random() * opts.length | 0]; out = word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2); } }
+      else if (kind === 'double') { for (let i = 1; i < word.length; i++) if (!VOWELS.includes(lower[i]) && lower[i] !== lower[i - 1] && lower[i] !== lower[i + 1]) opts.push(i); if (opts.length) { const i = opts[Math.random() * opts.length | 0]; out = word.slice(0, i + 1) + word[i] + word.slice(i + 1); } }
+      else if (kind === 'drop') { if (word.length >= 5) { for (let i = 1; i < word.length - 1; i++) if (lower[i] !== lower[i - 1]) opts.push(i); if (opts.length) { const i = opts[Math.random() * opts.length | 0]; out = word.slice(0, i) + word.slice(i + 1); } } }
+      else { for (let i = 1; i < word.length; i++) if (VOWELS.includes(lower[i])) opts.push(i); if (opts.length) { const i = opts[Math.random() * opts.length | 0]; const ch = VOWELS.replace(lower[i], ''); out = word.slice(0, i) + ch[Math.random() * ch.length | 0] + word.slice(i + 1); } }
+      if (out && out.toLowerCase() !== lower) return out;
+    }
+    return null;
+  }
+  const SHORT = () => STORIES.filter(s => s.title.split(' ').length <= 8);
+  let promptState = null;
+
+  function openPrompt(floor) {
+    G_.mode = 'prompt';
+    for (const k in keys) keys[k] = false;
+    const useScramble = floor % 2 === 1;
+    const pool = useScramble ? SHORT() : STORIES;
+    const story = pool[Math.random() * pool.length | 0];
+    promptState = { floor, story, type: useScramble ? 'scramble' : 'typo' };
+    $('promptKicker').textContent = `🔒 ${story.section} desk · ladder locked`;
+    $('promptMsg').textContent = ''; $('promptMsg').className = 'pmsg';
+    const ans = $('promptAnswer'), bank = $('promptBank');
+    ans.innerHTML = ''; bank.innerHTML = ''; ans.className = 'pq'; bank.className = 'pq bank';
+    const words = story.title.split(' ');
+    if (!useScramble) {
+      $('promptTitle').textContent = 'Find the typo';
+      $('promptHelp').textContent = 'Tap the misspelled word in this real DN headline.';
+      const idxs = shuffle(words.map((w, i) => i).filter(i => /^[A-Za-z]{4,}$/.test(words[i])));
+      let ti = -1, typo = null;
+      for (const i of idxs) { const t = makeTypo(words[i]); if (t) { ti = i; typo = t; break; } }
+      words.forEach((w, i) => {
+        const b = document.createElement('button'); b.className = 'ptile';
+        b.textContent = i === ti ? typo : w;
+        b.addEventListener('click', () => {
+          if (G_.mode !== 'prompt') return;
+          if (i === ti) { b.textContent = w; b.classList.add('good'); solvePrompt(); }
+          else { b.classList.add('bad'); setTimeout(() => b.classList.remove('bad'), 400); wrongPrompt('That word is spelled right.'); }
+        });
+        ans.appendChild(b);
+      });
+    } else {
+      $('promptTitle').textContent = 'Fix the headline';
+      $('promptHelp').textContent = 'Tap the words in order to rebuild this real DN headline.';
+      ans.className = 'pq answer-line';
+      const placed = [];
+      let tiles = words.map((w, i) => ({ w, i }));
+      do { shuffle(tiles); } while (tiles.every((t, k) => t.i === k));
+      const draw = () => {
+        ans.innerHTML = ''; bank.innerHTML = '';
+        placed.forEach((t, k) => { const b = document.createElement('button'); b.className = 'ptile'; b.textContent = t.w; b.onclick = () => { if (G_.mode !== 'prompt') return; placed.splice(k, 1); tiles.push(t); draw(); }; ans.appendChild(b); });
+        tiles.forEach((t, k) => { const b = document.createElement('button'); b.className = 'ptile'; b.textContent = t.w; b.onclick = () => {
+          if (G_.mode !== 'prompt') return;
+          tiles.splice(k, 1); placed.push(t); draw();
+          if (!tiles.length) {
+            if (placed.map(x => x.w).join(' ') === story.title) { ans.querySelectorAll('.ptile').forEach(x => x.classList.add('good')); solvePrompt(); }
+            else { const right = placed.filter((x, j) => x.w === words[j]).length; wrongPrompt(`${right} of ${words.length} words in the right spot. Try again.`); tiles = tiles.concat(placed.splice(0)); setTimeout(draw, 700); }
+          }
+        }; bank.appendChild(b); });
+      };
+      draw();
+    }
+    $('promptOverlay').classList.remove('hidden');
+  }
+
+  function wrongPrompt(text) {
+    score = Math.max(0, score - 50); hud();
+    const m = $('promptMsg'); m.textContent = `${text} −50`; m.className = 'pmsg bad';
+    const o = $('promptOverlay'); o.classList.remove('shake'); void o.offsetWidth; o.classList.add('shake');
+  }
+
+  function solvePrompt() {
+    const { floor, story } = promptState;
+    G_.mode = 'promptDone';
+    unlocked[floor] = true;
+    score += 300; hud();
+    if (!grabbed.some(s => s.url === story.url)) grabbed.push(story);
+    const m = $('promptMsg'); m.textContent = '✓ Unlocked! +300'; m.className = 'pmsg good';
+    $('tickKicker').textContent = `${story.section} · ladder unlocked`;
+    const body = $('tickBody'); body.className = ''; body.innerHTML = '';
+    const a = document.createElement('a'); a.href = story.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = story.title; body.appendChild(a);
+    setTimeout(() => {
+      $('promptOverlay').classList.add('hidden');
+      for (const k in keys) keys[k] = false;
+      G_.mode = 'play'; last = performance.now();
+    }, 900);
+  }
+
+  // ---------- Draw ----------
+  function draw() {
+    const ink = css('--ink'), paper = css('--paper'), red = css('--red'), line = css('--line'), muted = css('--muted'), bg = css('--bg');
+    ctx.fillStyle = paper; ctx.fillRect(0, 0, W, H);
+
+    // newsroom windows
+    ctx.fillStyle = line;
+    for (let f = 0; f < TOP; f++) {
+      const y0 = FLOOR_Y[f + 1] + FLOOR_T + 14, y1 = FLOOR_Y[f] - 30;
+      for (let x = 30; x < W - 30; x += 70) { ctx.globalAlpha = .45; ctx.fillRect(x, y0, 40, Math.max(0, y1 - y0)); }
+    }
+    ctx.globalAlpha = 1;
+
+    // floor labels
+    ctx.font = '700 9px Inter, sans-serif'; ctx.fillStyle = muted; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    const names = ['LOBBY', 'CITY HALL', 'STATEHOUSE', 'CONGRESS', 'WORLD DESK', 'PRESS ROOM'];
+    // label sits at the top of the room that each floor belongs to
+    for (let f = 0; f <= TOP; f++) ctx.fillText(names[f], f === TOP ? 200 : 8, f === TOP ? FLOOR_Y[TOP] - 60 : FLOOR_Y[f + 1] + FLOOR_T + 12);
+
+    // ladders
+    for (const l of LADDERS) {
+      ctx.strokeStyle = muted; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(l.x - 10, l.top); ctx.lineTo(l.x - 10, l.bottom); ctx.moveTo(l.x + 10, l.top); ctx.lineTo(l.x + 10, l.bottom); ctx.stroke();
+      ctx.lineWidth = 2;
+      for (let y = l.top + 10; y < l.bottom; y += 12) { ctx.beginPath(); ctx.moveTo(l.x - 10, y); ctx.lineTo(l.x + 10, y); ctx.stroke(); }
+    }
+
+    // padlocks on locked ladders
+    for (const l of LADDERS) {
+      if (unlocked[l.lo]) continue;
+      const y = l.bottom - 22;
+      ctx.fillStyle = css('--red');
+      ctx.strokeStyle = css('--red'); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(l.x, y - 6, 6, Math.PI, 0); ctx.stroke();
+      roundRect(l.x - 9, y - 6, 18, 14, 3); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(l.x - 1.5, y - 2, 3, 6);
+    }
+
+    // floors
+    for (let f = 0; f <= TOP; f++) {
+      const y = FLOOR_Y[f], g = gapOf(f);
+      const segs = g ? (g[0] === 0 ? [[GAP, W]] : [[0, W - GAP]]) : [[0, W]];
+      for (const [a, b] of segs) {
+        ctx.fillStyle = ink; ctx.fillRect(a, y, b - a, FLOOR_T);
+        ctx.fillStyle = red; ctx.fillRect(a, y, b - a, 3);
+        ctx.fillStyle = paper;
+        for (let x = a + 8; x < b - 4; x += 24) ctx.fillRect(x, y + 5, 2, 2);
+      }
+    }
+
+    // the press
+    const P = PRESS;
+    ctx.fillStyle = ink; roundRect(P.x, P.y, P.w, P.h, 6); ctx.fill();
+    ctx.fillStyle = red; ctx.fillRect(P.x, P.y + 10, P.w, 6);
+    for (const cy of [P.y + 36, P.y + 58]) {
+      ctx.fillStyle = muted; ctx.beginPath(); ctx.arc(P.x + 28, cy, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = paper; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(P.x + 28, cy); ctx.lineTo(P.x + 28 + Math.cos(t * 6) * 9, cy + Math.sin(t * 6) * 9); ctx.stroke();
+    }
+    ctx.fillStyle = paper; ctx.font = '800 16px Fraunces, Georgia, serif'; ctx.textAlign = 'center';
+    ctx.fillText('DN', P.x + 60, P.y + 46);
+    ctx.font = '700 7px Inter, sans-serif'; ctx.fillText('PRESS', P.x + 60, P.y + 58);
+    // steam puffs
+    ctx.fillStyle = line;
+    for (let i = 0; i < 3; i++) { const k = (t * .7 + i / 3) % 1; ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(P.x + 18 + i * 14, P.y - 6 - k * 30, 5 + k * 6, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+
+    // STOP button
+    const by = BUTTON.y;
+    ctx.fillStyle = muted; ctx.fillRect(BUTTON.x - 3, by - 22, 6, 22);
+    const glow = 0.5 + Math.sin(t * 5) * 0.5;
+    ctx.fillStyle = red; ctx.beginPath(); ctx.arc(BUTTON.x, by - 28, 10 + glow * 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ink; ctx.font = '800 10px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('STOP', BUTTON.x, by - 44);
+    ctx.fillStyle = red; ctx.font = '800 14px Inter, sans-serif';
+    ctx.fillText('↓', BUTTON.x, by - 56 - Math.abs(Math.sin(t * 4)) * 4);
+
+    // tips (newspapers)
+    for (const tip of tips) {
+      if (tip.got) continue;
+      const bob = Math.sin(t * 3 + tip.x) * 3;
+      const x = tip.x, y = tip.y + bob;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.12);
+      ctx.fillStyle = paper; ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+      roundRect(-12, -9, 24, 18, 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = red; ctx.fillRect(-9, -6, 18, 3);
+      ctx.fillStyle = muted; ctx.fillRect(-9, -1, 8, 7); ctx.fillRect(1, -1, 8, 2); ctx.fillRect(1, 3, 8, 2);
+      ctx.restore();
+    }
+
+    // rolls
+    for (const b of rolls) {
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.ang);
+      ctx.fillStyle = '#f4efe4'; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, b.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#8a8378'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(0, 0, b.r - 4, 0.3, Math.PI * 1.6); ctx.stroke();
+      ctx.fillStyle = '#5b554c'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // player
+    drawPlayer(ink, paper, red);
+
+    // pops
+    ctx.textAlign = 'center';
+    for (const q of pops) {
+      ctx.globalAlpha = 1 - q.t / 0.9; ctx.fillStyle = q.color;
+      ctx.font = '800 16px Fraunces, Georgia, serif';
+      ctx.fillText(q.text, q.x, q.y - q.t * 30);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPlayer(ink, paper, red) {
+    const p = player;
+    if (deadTimer > 0) {
+      // squashed flat
+      ctx.fillStyle = red; roundRect(p.x - 12, p.y - 6, 24, 6, 2); ctx.fill();
+      ctx.fillStyle = ink; ctx.fillRect(p.x - 9, p.y - 9, 18, 3);
+      return;
+    }
+    if (invuln > 0 && Math.floor(t * 12) % 2) return;
+    const x = p.x, y = p.y;
+    const step = Math.sin(p.walkT * 14);
+    ctx.save(); ctx.translate(x, y);
+    if (!p.ladder && p.face < 0) ctx.scale(-1, 1);
+    // legs
+    ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (p.ladder) { ctx.moveTo(-3, -9); ctx.lineTo(-4, -1 + step * 2); ctx.moveTo(3, -9); ctx.lineTo(4, -1 - step * 2); }
+    else if (!p.onGround) { ctx.moveTo(-2, -9); ctx.lineTo(-6, -2); ctx.moveTo(2, -9); ctx.lineTo(6, -4); }
+    else { ctx.moveTo(-2, -9); ctx.lineTo(-2 + step * 4, -1); ctx.moveTo(2, -9); ctx.lineTo(2 - step * 4, -1); }
+    ctx.stroke();
+    // body (red DN shirt)
+    ctx.fillStyle = red; roundRect(-7, -22, 14, 14, 3); ctx.fill();
+    // arm holding notepad
+    ctx.fillStyle = paper; ctx.fillRect(5, -19, 6, 8); ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.strokeRect(5, -19, 6, 8);
+    // head
+    ctx.fillStyle = '#e8b98f'; ctx.beginPath(); ctx.arc(0, -28, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(2.5, -29, 1.2, 0, Math.PI * 2); ctx.fill();
+    // fedora with press card
+    ctx.fillStyle = ink; ctx.fillRect(-9, -33, 18, 2.5); roundRect(-6, -39, 12, 7, 2); ctx.fill();
+    ctx.fillStyle = paper; ctx.fillRect(1, -38, 4, 4);
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ---------- Loop ----------
+  t = 0; level = 1; score = 0; lives = 3; deck = shuffle(STORIES.slice()); grabbed = []; rolls = []; pops = []; bonus = 600; deadTimer = 0;
+  resetPlayer(); invuln = 0; placeTips(); hud();
+
+  function frame(now) {
+    const dt = Math.min(0.033, (now - (last || now)) / 1000);
+    last = now;
+    if (G_.mode === 'play') update(dt);
+    else t += dt;
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  $('startBtn').addEventListener('click', startGame);
+  $('againBtn').addEventListener('click', startGame);
+  $('nextBtn').addEventListener('click', nextLevel);
+  $('resumeBtn').addEventListener('click', togglePause);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && G_.mode === 'play') togglePause(); });
+})();
+</script>
+</body>
+</html>
