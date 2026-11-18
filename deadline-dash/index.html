@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deadline Dash</title>
+<meta name="description" content="Deadline Dash: chase real Daily Nebraskan stories around the newsroom before the clock runs out. A Mostly Mindless Entertainment game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f2ea;
+    --paper: #fffdf8;
+    --ink: #1a1816;
+    --muted: #6a645c;
+    --line: #e2dbcf;
+    --red: #d00000;
+    --news: #d00000;
+    --sports: #1f5fbf;
+    --culture: #8a3fb8;
+    --opinion: #d98a00;
+    --grid: #efe9dd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141210;
+      --paper: #1e1b18;
+      --ink: #f3eee7;
+      --muted: #a69f95;
+      --line: #36312b;
+      --red: #ff4a4a;
+      --news: #ff4a4a;
+      --sports: #5b9bff;
+      --culture: #c27cf0;
+      --opinion: #ffb627;
+      --grid: #262220;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--red); text-underline-offset: 3px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+
+  /* Masthead */
+  header.mast { border-bottom: 3px double var(--ink); padding: 18px 0 12px; text-align: center; }
+  .section-tag {
+    display: inline-block; background: var(--red); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 2px;
+  }
+  .paper-name { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; margin-top: 10px; color: var(--muted); }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: clamp(38px, 8vw, 64px); line-height: 1; letter-spacing: -.02em; margin-top: 4px; }
+  h1 span { color: var(--red); }
+  .dek { color: var(--muted); margin-top: 8px; font-size: 16px; }
+
+  /* Layout */
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; padding: 24px 0 40px; align-items: start; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+
+  .board-card { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  .stat .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .stat .val { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat.clock.low .val { color: var(--red); animation: blink .5s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+
+  .assignment { display: flex; align-items: center; gap: 10px; border: 2px dashed var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 14px; }
+  .assignment .chip { font-weight: 700; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 13px; }
+
+  .canvas-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 6px; touch-action: none; }
+  .overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 20px; gap: 10px;
+    background: color-mix(in srgb, var(--paper) 90%, transparent); border-radius: 6px;
+    overflow-y: auto;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 800; font-size: clamp(26px, 5vw, 38px); line-height: 1.1; }
+  .overlay p { color: var(--muted); max-width: 420px; font-size: 15px; }
+  .btn {
+    font: inherit; font-weight: 700; font-size: 16px; cursor: pointer;
+    background: var(--red); color: #fff; border: 0; border-radius: 6px; padding: 12px 26px;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .rank { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--red); }
+  .edition { text-align: left; width: 100%; max-width: 460px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .edition h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
+  .edition ol { padding-left: 20px; font-size: 14px; }
+  .edition li { margin: 3px 0; }
+
+  .ticker { margin-top: 10px; border-top: 2px solid var(--ink); padding-top: 8px; min-height: 52px; font-size: 14px; }
+  .ticker .kicker { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .ticker a { color: var(--ink); font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 17px; text-decoration: none; }
+  .ticker a:hover { text-decoration: underline; }
+
+  .dpad { display: none; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 52px); gap: 6px; justify-content: center; margin-top: 12px; }
+  .dpad button { font-size: 22px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; cursor: pointer; touch-action: manipulation; }
+  .dpad .up { grid-column: 2; grid-row: 1; }
+  .dpad .left { grid-column: 1; grid-row: 2; }
+  .dpad .down { grid-column: 2; grid-row: 2; }
+  .dpad .right { grid-column: 3; grid-row: 2; }
+  @media (pointer: coarse) { .dpad { display: grid; } }
+
+  /* Sidebar */
+  aside .box { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  aside h2 { font-family: 'Fraunces', Georgia, serif; font-size: 20px; margin-bottom: 8px; }
+  aside ol, aside ul { padding-left: 18px; font-size: 14px; }
+  aside li { margin: 6px 0; }
+  .legend { list-style: none; padding: 0 !important; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .sw { width: 22px; height: 22px; border-radius: 5px; color: #fff; font-weight: 800; font-size: 12px; display: grid; place-items: center; flex: none; }
+  kbd { font-family: inherit; font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--bg); }
+  .small { font-size: 13px; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line); padding: 16px 0 32px; font-size: 13px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <span class="section-tag">Mostly Mindless Entertainment</span>
+    <div class="paper-name">The Daily Nebraskan</div>
+    <h1>Deadline <span>Dash</span></h1>
+    <p class="dek">The presses roll at midnight. Chase down real DN stories before the clock runs out.</p>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="board-card" aria-label="Game board">
+    <div class="hud">
+      <div class="stat"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+      <div class="stat clock" id="clockBox"><div class="lbl">Deadline</div><div class="val" id="clock">0:30</div></div>
+      <div class="stat"><div class="lbl">Best</div><div class="val" id="best">0</div></div>
+    </div>
+    <div class="assignment" aria-live="polite">
+      <span>📝 Editor wants:</span>
+      <span class="chip" id="assignChip" style="background:var(--news)">News</span>
+      <span class="small" id="assignNote">worth 3× points</span>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="board" width="630" height="630" aria-label="Deadline Dash playing field"></canvas>
+
+      <div class="overlay" id="startOverlay">
+        <h2>Get the scoop.</h2>
+        <p>You're a DN reporter. Steer around the newsroom grabbing story tips. Every story you file grows your column — don't run into the wall or your own copy.</p>
+        <button class="btn" id="startBtn">Start reporting</button>
+        <p class="small">Arrow keys / WASD to move · Space to pause · swipe on phones</p>
+      </div>
+
+      <div class="overlay hidden" id="pauseOverlay">
+        <h2>Coffee break ☕</h2>
+        <p>The clock is stopped. Press Space or the button to get back to it.</p>
+        <button class="btn" id="resumeBtn">Back to the newsroom</button>
+      </div>
+
+      <div class="overlay hidden" id="overOverlay">
+        <div class="rank" id="overRank">Staff Writer</div>
+        <h2 id="overTitle">Missed deadline!</h2>
+        <p id="overMsg"></p>
+        <button class="btn" id="againBtn">File another edition</button>
+        <div class="edition" id="edition">
+          <h3>Your edition — read the real stories</h3>
+          <ol id="editionList"></ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticker" aria-live="polite">
+      <div class="kicker" id="tickKicker" style="color:var(--muted)">Latest filed</div>
+      <div id="tickBody" class="small">Nothing yet. Go find a story.</div>
+    </div>
+
+    <div class="dpad" aria-label="Direction pad">
+      <button class="up" data-dir="up" aria-label="Up">▲</button>
+      <button class="left" data-dir="left" aria-label="Left">◀</button>
+      <button class="down" data-dir="down" aria-label="Down">▼</button>
+      <button class="right" data-dir="right" aria-label="Right">▶</button>
+    </div>
+  </section>
+
+  <aside>
+    <div class="box">
+      <h2>How to play</h2>
+      <ol>
+        <li>Steer your reporter (the dark square) with <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>. On a phone, swipe or use the arrow pad.</li>
+        <li>Run over a <strong>story tip</strong> to file it. Each one is a real, recent Daily Nebraskan headline.</li>
+        <li>Every story adds time to your <strong>deadline clock</strong> and grows your column of copy behind you.</li>
+        <li>Grab tips from the section your <strong>editor wants</strong> for 3× points and extra time. The assignment changes every few stories.</li>
+        <li>Your edition goes to print — game over — if the clock hits zero, or you crash into the wall or your own column.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h2>The beats</h2>
+      <ul class="legend">
+        <li><span class="sw" style="background:var(--news)">N</span> News</li>
+        <li><span class="sw" style="background:var(--sports)">S</span> Sports</li>
+        <li><span class="sw" style="background:var(--culture)">C</span> Culture</li>
+        <li><span class="sw" style="background:var(--opinion)">O</span> Opinion</li>
+        <li><span class="sw" style="background:var(--ink);color:var(--paper)">★</span> Breaking news: 5 points, shows up sometimes, vanishes fast</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Newsroom ranks</h2>
+      <ul class="small">
+        <li>0–9: Stringer</li>
+        <li>10–24: Staff Writer</li>
+        <li>25–49: Beat Reporter</li>
+        <li>50–79: Section Editor</li>
+        <li>80+: Editor-in-Chief</li>
+      </ul>
+    </div>
+  </aside>
+</main>
+</div>
+
+<footer>
+  <div class="wrap">
+    A <strong>Mostly Mindless Entertainment</strong> game for <a href="https://www.dailynebraskan.com/" target="_blank" rel="noopener">The Daily Nebraskan</a>. Headlines link to the original DN stories.<br>
+    Built by Mackenzie Lewis for JOUR 304 with help from AI. · <a href="../">More projects</a>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const DN = 'https://www.dailynebraskan.com';
+  const STORIES = [
+    // News
+    ['news', 'UNL College of Business establishes endowment for franchise program', '/news/unl-college-of-business-establishes-endowment-for-franchise-program/article_355dc899-5f65-4f01-9e17-c97b31656f45.html'],
+    ['news', 'UNL to lead cybersecurity in national AI research project', '/news/unl-to-lead-cybersecurity-in-national-ai-research-project/article_0abbd36c-0869-400d-968d-326cc5811816.html'],
+    ['news', 'UNL students consider leaving Lincoln as graduation approaches', '/news/unl-students-consider-leaving-lincoln-as-graduation-approaches/article_74c2413b-38c8-4c46-aa7e-51474f7f3b55.html'],
+    ['news', "UNL's MayoCap club pushes comedy limits with live motion capture sketches", '/news/unl-s-mayocap-club-pushes-comedy-limits-with-live-motion-capture-sketches/article_3ea3b6e4-d660-4982-a184-595d8e015002.html'],
+    ['news', 'University of Nebraska-Lincoln to replace UPC, Campus NightLife', '/news/breaking-university-of-nebraska-lincoln-to-replace-upc-campus-nightlife/article_07938b2e-bd90-4e3f-b1eb-cbbcd3b52c57.html'],
+    // Sports
+    ['sports', 'Rhule rundown: Rutgers recap, scouting Ohio State', '/sports/football/rhule-rundown-rutgers-recap-scouting-ohio-state/article_cdbb0ecd-322b-4125-b741-ff355be6de55.html'],
+    ['sports', 'Husker football scouting report: Ohio State', '/sports/football/husker-football-scouting-report-ohio-state/article_31cf54b5-238a-401a-9efc-fdad366a1f4f.html'],
+    ['sports', "Takeaways from Nebraska football's 31-0 win over Rutgers", '/sports/takeaways-from-nebraska-football-s-31-0-win-over-rutgers/article_dbbf9b29-fddf-4ff1-aa44-82555282bcd2.html'],
+    ['sports', 'Report card: Nebraska football gets bowl eligible in win over Rutgers', '/sports/report-card-nebraska-football-gets-bowl-eligible-in-win-over-rutgers/article_9d6f3877-5954-43b0-a3d0-4e4602afd4ab.html'],
+    ['sports', "Five players who stood out in Nebraska football's win against Rutgers", '/sports/five-players-who-stood-out-in-nebraska-football-s-win-against-rutgers/article_0f68b04d-8235-466e-a02b-c15703a5cf00.html'],
+    ['sports', 'No. 3 Nebraska Wrestling falls to No. 2 Oklahoma State on the road', '/sports/no-3-nebraska-wrestling-falls-to-no-2-oklahoma-state-on-the-road/article_5c084585-22ab-460d-9070-624515a0317f.html'],
+    ['sports', 'No. 1 Nebraska volleyball wins Big Ten title in fourth straight ranked win', '/sports/no-1-nebraska-volleyball-wins-big-ten-title-in-fourth-straight-ranked-win/article_74813c1f-23f1-429a-9f37-69e16be98b79.html'],
+    ['sports', 'No. 1 Nebraska volleyball sweeps Iowa on an emotional senior night', '/sports/no-1-nebraska-volleyball-sweeps-iowa-on-an-emotional-senior-night/article_f68310b0-7737-48f4-b929-87d6741b4eb2.html'],
+    ['sports', "Nebraska volleyball's Laney Choboy embraces new role", '/sports/nebraska-volleyball-s-laney-choboy-embraces-new-role/article_5cd7601a-fa1e-4642-af42-9aad035b056c.html'],
+    ['sports', 'Editor Score Predictions: Nebraska vs. Rutgers', '/sports/football/editor-score-predictions-nebraska-vs-rutgers/article_26cf4f6e-daf2-42cc-98be-b6b78e5565c2.html'],
+    // Culture
+    ['culture', 'COLUMN: Daily Claude: The rise of vibe-coded online games', '/culture/column-daily-claude-the-rise-of-vibe-coded-online-games/article_24cacaae-c233-414a-a7a3-c82c4ea202ef.html'],
+    ['culture', 'COLUMN: Fashion at your fingertips: closet styling apps ranked', '/culture/column-fashion-at-your-fingertips-closet-styling-apps-ranked/article_672a73af-d630-47c4-a2e3-48547f594df3.html'],
+    ['culture', 'Nebraska Celebration of Books creates community for book lovers', '/culture/nebraska-celebration-of-books-creates-community-for-book-lovers/article_5392c3f8-f617-4e1d-ba98-9f1c2dd054ed.html'],
+    ['culture', 'REVIEW: Kaleidoscopic debut album from Daine shows versatility', '/culture/review-kaleidoscopic-debut-album-from-daine-shows-versatility/article_caa474e5-8ef4-437f-9d51-44afafa12826.html'],
+    ['culture', 'PRESS PLAY: Come one, come alls to the DN office', '/culture/press-play-come-one-come-alls-to-the-dn-office/article_96c228a7-f19d-4d01-9ad2-fb68ed1979a8.html'],
+    ['culture', 'AO3 shutdown leaves UNL students scrambling for their fan fiction fix', '/culture/ao3-shutdown-leaves-unl-students-scrambling-for-their-fan-fiction-fix/article_f6311ff7-17c0-4e05-827a-8ffc4d841cee.html'],
+    // Opinion
+    ['opinion', "OPINION: Shane Gillis's gym joke is everything wrong with lazy comedy", '/opinion/opinion-shane-gillis-s-gym-joke-is-everything-wrong-with-lazy-comedy/article_f8d038eb-bf5c-41cd-895e-f2df05f57ab0.html'],
+    ['opinion', 'OPINION: The blue wave could still end in a generational fumble', '/opinion/opinion-the-blue-wave-could-still-end-in-a-generational-fumble/article_3153a5ad-a6fb-4a77-9aec-f40a0b1b1267.html'],
+    ['opinion', "OPINION: College is a scam, but it doesn't have to be", '/opinion/opinion-college-is-a-scam-but-it-doesn-t-have-to-be/article_c2ceb488-6a87-4852-a56b-bc5eb19a0f44.html'],
+    ['opinion', 'Letter to the Editor: The importance of Land Phil', '/opinion/letters_to_editor/letter-to-the-editor-the-importance-of-land-phil/article_1112077c-1d4b-4bb6-9e77-6cbb46c81cca.html'],
+  ].map(([section, title, path]) => ({ section, title, url: DN + path }));
+
+  const SECTIONS = {
+    news:    { label: 'News',    letter: 'N', css: '--news' },
+    sports:  { label: 'Sports',  letter: 'S', css: '--sports' },
+    culture: { label: 'Culture', letter: 'C', css: '--culture' },
+    opinion: { label: 'Opinion', letter: 'O', css: '--opinion' },
+  };
+  const SECTION_KEYS = Object.keys(SECTIONS);
+
+  const N = 21;                // grid cells per side
+  const START_TIME = 30;       // seconds on the deadline clock
+  const MAX_TIME = 60;
+  const BREAKING_LIFE = 6000;  // ms a breaking tip stays on the board
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const CELL = canvas.width / N;
+
+  const $ = id => document.getElementById(id);
+  const scoreEl = $('score'), clockEl = $('clock'), clockBox = $('clockBox'), bestEl = $('best');
+  const assignChip = $('assignChip');
+  const tickKicker = $('tickKicker'), tickBody = $('tickBody');
+
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('dn-deadline-dash-best') || '0', 10) || 0; } catch (e) {}
+  bestEl.textContent = best;
+
+  let state;
+
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function newGame() {
+    const mid = N >> 1;
+    state = {
+      snake: [{ x: mid - 1, y: mid }, { x: mid - 2, y: mid }, { x: mid - 3, y: mid }],
+      dir: { x: 1, y: 0 },
+      queue: [],
+      score: 0,
+      time: START_TIME,
+      speed: 150,
+      acc: 0,
+      last: 0,
+      running: false,
+      paused: false,
+      over: false,
+      deck: shuffle(STORIES.slice()),
+      filed: [],
+      tips: [],
+      assignment: SECTION_KEYS[Math.random() * 4 | 0],
+      untilReassign: 4,
+      breaking: null,
+      nextBreakingIn: 8 + (Math.random() * 6 | 0),
+      grow: 0,
+      flash: null,
+    };
+    spawnTip(); spawnTip(); spawnTip();
+    setAssignment(state.assignment);
+    updateHud();
+    draw(0);
+  }
+
+  function occupied(x, y) {
+    return state.snake.some(s => s.x === x && s.y === y)
+      || state.tips.some(t => t.x === x && t.y === y)
+      || (state.breaking && state.breaking.x === x && state.breaking.y === y);
+  }
+  function freeCell() {
+    for (let i = 0; i < 500; i++) {
+      const x = Math.random() * N | 0, y = Math.random() * N | 0;
+      if (!occupied(x, y)) return { x, y };
+    }
+    return null;
+  }
+  function drawStory(section) {
+    // Pull the next story, refilling the deck when empty. Optionally prefer a section.
+    if (state.deck.length === 0) state.deck = shuffle(STORIES.slice());
+    if (section) {
+      const i = state.deck.findIndex(s => s.section === section);
+      if (i >= 0) return state.deck.splice(i, 1)[0];
+    }
+    return state.deck.pop();
+  }
+  function spawnTip() {
+    const c = freeCell(); if (!c) return;
+    // Make sure the assigned section is always reachable on the board.
+    const hasAssigned = state.tips.some(t => t.story.section === state.assignment);
+    const story = drawStory(hasAssigned ? null : state.assignment);
+    state.tips.push({ ...c, story, born: performance.now() });
+  }
+
+  function setAssignment(sec) {
+    state.assignment = sec;
+    assignChip.textContent = SECTIONS[sec].label;
+    assignChip.style.background = `var(${SECTIONS[sec].css})`;
+    if (!state.tips.some(t => t.story.section === sec)) {
+      // swap one tip to the assigned section so it's always possible
+      const t = state.tips[0];
+      if (t) t.story = drawStory(sec);
+    }
+  }
+
+  function updateHud() {
+    scoreEl.textContent = state.score;
+    const t = Math.max(0, Math.ceil(state.time));
+    clockEl.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+    clockBox.classList.toggle('low', state.time <= 8 && state.running);
+  }
+
+  function showTicker(story, pts, isBreaking) {
+    const sec = SECTIONS[story.section];
+    tickKicker.style.color = isBreaking ? 'var(--red)' : `var(${sec.css})`;
+    tickKicker.textContent = `${isBreaking ? 'Breaking · ' : ''}${sec.label} · +${pts}`;
+    tickBody.className = '';
+    tickBody.innerHTML = '';
+    const a = document.createElement('a');
+    a.href = story.url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = story.title;
+    tickBody.appendChild(a);
+  }
+
+  function rankFor(score) {
+    if (score >= 80) return 'Editor-in-Chief';
+    if (score >= 50) return 'Section Editor';
+    if (score >= 25) return 'Beat Reporter';
+    if (score >= 10) return 'Staff Writer';
+    return 'Stringer';
+  }
+
+  function step() {
+    if (state.queue.length) {
+      const d = state.queue.shift();
+      if (d.x !== -state.dir.x || d.y !== -state.dir.y) state.dir = d;
+    }
+    const head = state.snake[0];
+    const nx = head.x + state.dir.x, ny = head.y + state.dir.y;
+
+    if (nx < 0 || ny < 0 || nx >= N || ny >= N) return gameOver('wall');
+    // tail moves out of the way this step unless we're growing
+    const body = state.grow > 0 ? state.snake : state.snake.slice(0, -1);
+    if (body.some(s => s.x === nx && s.y === ny)) return gameOver('self');
+
+    state.snake.unshift({ x: nx, y: ny });
+    if (state.grow > 0) state.grow--; else state.snake.pop();
+
+    // Breaking news
+    if (state.breaking && state.breaking.x === nx && state.breaking.y === ny) {
+      const story = state.breaking.story;
+      state.breaking = null;
+      file(story, 5, 5, true);
+      return;
+    }
+    const i = state.tips.findIndex(t => t.x === nx && t.y === ny);
+    if (i >= 0) {
+      const tip = state.tips.splice(i, 1)[0];
+      const match = tip.story.section === state.assignment;
+      file(tip.story, match ? 3 : 1, match ? 6 : 3, false);
+      spawnTip();
+    }
+  }
+
+  function file(story, pts, secs, isBreaking) {
+    state.score += pts;
+    state.time = Math.min(MAX_TIME, state.time + secs);
+    state.grow += 2;
+    state.speed = Math.max(70, state.speed - 2.5);
+    state.filed.push({ story, pts });
+    state.flash = { x: state.snake[0].x, y: state.snake[0].y, text: `+${pts}`, t: performance.now() };
+    showTicker(story, pts, isBreaking);
+
+    state.untilReassign--;
+    if (state.untilReassign <= 0) {
+      const others = SECTION_KEYS.filter(k => k !== state.assignment);
+      setAssignment(others[Math.random() * others.length | 0]);
+      state.untilReassign = 3 + (Math.random() * 3 | 0);
+    }
+    state.nextBreakingIn--;
+    if (state.nextBreakingIn <= 0 && !state.breaking) {
+      const c = freeCell();
+      if (c) state.breaking = { ...c, story: drawStory(), born: performance.now() };
+      state.nextBreakingIn = 7 + (Math.random() * 6 | 0);
+    }
+    updateHud();
+  }
+
+  function gameOver(reason) {
+    state.over = true; state.running = false;
+    const titles = {
+      wall: ['Crashed into the newsroom wall!', 'You ran straight out of the building. The copy desk is going to need a minute.'],
+      self: ['Tangled in your own copy!', 'You tripped over your own column. Happens to the best of us.'],
+      clock: ['Missed deadline!', 'The presses rolled without you. Grab stories faster to keep the clock alive.'],
+    };
+    const [title, msg] = titles[reason];
+    let newBest = false;
+    if (state.score > best) {
+      best = state.score; newBest = true;
+      try { localStorage.setItem('dn-deadline-dash-best', String(best)); } catch (e) {}
+      bestEl.textContent = best;
+    }
+    $('overRank').textContent = `Rank: ${rankFor(state.score)}`;
+    $('overTitle').textContent = title;
+    $('overMsg').textContent = `${msg} You filed ${state.filed.length} ${state.filed.length === 1 ? 'story' : 'stories'} for ${state.score} points.${newBest ? ' New personal best!' : ''}`;
+
+    const list = $('editionList');
+    list.innerHTML = '';
+    const seen = new Set();
+    state.filed.forEach(({ story }) => {
+      if (seen.has(story.url)) return; seen.add(story.url);
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = story.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = story.title;
+      li.appendChild(a);
+      li.append(` — ${SECTIONS[story.section].label}`);
+      list.appendChild(li);
+    });
+    $('edition').style.display = seen.size ? '' : 'none';
+    $('overOverlay').classList.remove('hidden');
+    clockBox.classList.remove('low');
+    draw(performance.now());
+    $('againBtn').focus();
+  }
+
+  // ---------- Rendering ----------
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function draw(now) {
+    const paper = css('--paper'), grid = css('--grid'), ink = css('--ink'), line = css('--line');
+    ctx.fillStyle = paper; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // newsprint columns
+    ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    for (let i = 1; i < N; i++) {
+      ctx.beginPath(); ctx.moveTo(i * CELL + .5, 0); ctx.lineTo(i * CELL + .5, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * CELL + .5); ctx.lineTo(canvas.width, i * CELL + .5); ctx.stroke();
+    }
+    ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
+    // tips
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    state.tips.forEach(t => {
+      const sec = SECTIONS[t.story.section];
+      const match = t.story.section === state.assignment;
+      const pulse = match ? 1 + Math.sin(now / 180) * 0.06 : 1;
+      const s = (CELL - 6) * pulse, off = (CELL - s) / 2;
+      ctx.fillStyle = css(sec.css);
+      roundRect(t.x * CELL + off, t.y * CELL + off, s, s, 6); ctx.fill();
+      if (match) { ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.stroke(); }
+      ctx.fillStyle = '#fff'; ctx.font = `800 ${CELL * .5}px Inter, sans-serif`;
+      ctx.fillText(sec.letter, t.x * CELL + CELL / 2, t.y * CELL + CELL / 2 + 1);
+    });
+
+    // breaking news
+    if (state.breaking) {
+      const age = now - state.breaking.born;
+      if (state.running && age > BREAKING_LIFE) state.breaking = null;
+      else {
+        const b = state.breaking;
+        const blink = age > BREAKING_LIFE - 2000 && Math.floor(now / 150) % 2;
+        if (!blink) {
+          ctx.fillStyle = ink;
+          roundRect(b.x * CELL + 2, b.y * CELL + 2, CELL - 4, CELL - 4, 6); ctx.fill();
+          ctx.fillStyle = css('--red'); ctx.font = `800 ${CELL * .6}px Inter, sans-serif`;
+          ctx.fillText('★', b.x * CELL + CELL / 2, b.y * CELL + CELL / 2 + 1);
+        }
+      }
+    }
+
+    // snake body: columns of copy
+    for (let i = state.snake.length - 1; i >= 1; i--) {
+      const s = state.snake[i];
+      ctx.fillStyle = paper; ctx.strokeStyle = ink; ctx.lineWidth = 2;
+      roundRect(s.x * CELL + 3, s.y * CELL + 3, CELL - 6, CELL - 6, 3); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = line; ctx.lineWidth = 2;
+      for (let k = 0; k < 3; k++) {
+        const yy = s.y * CELL + 9 + k * 5;
+        ctx.beginPath(); ctx.moveTo(s.x * CELL + 8, yy); ctx.lineTo(s.x * CELL + CELL - 8 - (k === 2 ? 5 : 0), yy); ctx.stroke();
+      }
+    }
+    // head: the reporter
+    const h = state.snake[0];
+    ctx.fillStyle = ink;
+    roundRect(h.x * CELL + 1, h.y * CELL + 1, CELL - 2, CELL - 2, 7); ctx.fill();
+    // red press band
+    ctx.fillStyle = css('--red');
+    ctx.fillRect(h.x * CELL + 4, h.y * CELL + 6, CELL - 8, 4);
+    // eyes looking in direction
+    const cx = h.x * CELL + CELL / 2 + state.dir.x * 4, cy = h.y * CELL + CELL / 2 + 3 + state.dir.y * 3;
+    // eyes sit side by side, perpendicular to the direction of travel
+    const ox = state.dir.y !== 0 ? 5 : 0, oy = state.dir.x !== 0 ? 4 : 0;
+    ctx.fillStyle = paper;
+    ctx.beginPath(); ctx.arc(cx - ox, cy - oy, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + ox, cy + oy, 3, 0, Math.PI * 2); ctx.fill();
+
+    // score flash
+    if (state.flash && now - state.flash.t < 700) {
+      const f = state.flash, a = 1 - (now - f.t) / 700;
+      ctx.globalAlpha = a; ctx.fillStyle = css('--red');
+      ctx.font = `800 ${CELL * .8}px Fraunces, Georgia, serif`;
+      ctx.fillText(f.text, f.x * CELL + CELL / 2, f.y * CELL - (1 - a) * 24);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function loop(now) {
+    if (!state.running) return;
+    const dt = Math.min(100, now - state.last);
+    state.last = now;
+    if (!state.paused) {
+      state.time -= dt / 1000;
+      if (state.time <= 0) { state.time = 0; updateHud(); gameOver('clock'); return; }
+      state.acc += dt;
+      while (state.acc >= state.speed && state.running) {
+        state.acc -= state.speed;
+        step();
+      }
+      if (!state.running) return;
+      updateHud();
+      draw(now);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function start() {
+    newGame();
+    tickKicker.textContent = 'Latest filed'; tickKicker.style.color = 'var(--muted)';
+    tickBody.className = 'small'; tickBody.textContent = 'Nothing yet. Go find a story.';
+    $('startOverlay').classList.add('hidden');
+    $('overOverlay').classList.add('hidden');
+    state.running = true;
+    state.last = performance.now();
+    requestAnimationFrame(loop);
+  }
+
+  function togglePause() {
+    if (!state.running || state.over) return;
+    state.paused = !state.paused;
+    $('pauseOverlay').classList.toggle('hidden', !state.paused);
+    if (!state.paused) state.last = performance.now();
+  }
+
+  const DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+  function turn(name) {
+    if (!state.running || state.paused) return;
+    const d = DIRS[name];
+    const lastDir = state.queue.length ? state.queue[state.queue.length - 1] : state.dir;
+    if ((d.x === lastDir.x && d.y === lastDir.y) || (d.x === -lastDir.x && d.y === -lastDir.y)) return;
+    if (state.queue.length < 3) state.queue.push(d);
+  }
+
+  const KEYMAP = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
+  document.addEventListener('keydown', e => {
+    if (KEYMAP[e.code]) {
+      e.preventDefault();
+      if (!state.running && !$('startOverlay').classList.contains('hidden')) { start(); }
+      turn(KEYMAP[e.code]);
+    } else if (e.code === 'Space' || e.code === 'KeyP') {
+      if (state.running) { e.preventDefault(); togglePause(); }
+      else if (document.activeElement.tagName !== 'BUTTON' && document.activeElement.tagName !== 'A') { e.preventDefault(); start(); }
+    }
+  });
+
+  // Swipe
+  let touchStart = null;
+  canvas.addEventListener('touchstart', e => { const t = e.touches[0]; touchStart = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    if (!touchStart) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    touchStart = { x: t.clientX, y: t.clientY };
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => { touchStart = null; });
+
+  document.querySelectorAll('.dpad button').forEach(b => {
+    b.addEventListener('pointerdown', e => { e.preventDefault(); turn(b.dataset.dir); });
+  });
+
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  $('resumeBtn').addEventListener('click', togglePause);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && state.running && !state.paused) togglePause(); });
+
+  newGame();
+  // redraw idle board once fonts load so letters render in Inter
+  if (document.fonts) document.fonts.ready.then(() => draw(performance.now()));
+})();
+</script>
+</body>
+</html>
